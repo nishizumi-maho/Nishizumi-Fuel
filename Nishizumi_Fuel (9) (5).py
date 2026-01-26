@@ -232,9 +232,9 @@ class FuelConsumptionMonitor:
             justify="left",
             wraplength=320,
         )
-        self.advanced_info_label.pack(anchor="w")
+        self.advanced_info_label.pack(anchor="w", pady=(0, 2))
         advanced_buttons = tk.Frame(self.advanced_frame, bg="#0f1115")
-        advanced_buttons.pack(fill="x", pady=(4, 0))
+        advanced_buttons.pack(fill="x")
 
         self.plus_one_button = tk.Button(
             advanced_buttons,
@@ -477,7 +477,7 @@ class FuelConsumptionMonitor:
         show_advanced = not self.show_advanced_var.get()
         self.show_advanced_var.set(show_advanced)
         if show_advanced:
-            self.advanced_frame.pack(fill="x", padx=12, pady=(0, 6))
+            self.advanced_frame.pack(fill="x", padx=12, pady=(0, 4))
             self._apply_window_geometry()
         else:
             self.advanced_frame.pack_forget()
@@ -559,7 +559,7 @@ class FuelConsumptionMonitor:
         self.bottom_frame.pack(fill="x", padx=12, pady=(0, 6))
         self.controls_frame.pack(fill="x", padx=12, pady=(0, 4))
         if self.show_advanced_var.get():
-            self.advanced_frame.pack(fill="x", padx=12, pady=(0, 6))
+            self.advanced_frame.pack(fill="x", padx=12, pady=(0, 4))
         self.status_label.pack(anchor="w", padx=12, pady=(0, 6))
 
     def _update_loop(self) -> None:
