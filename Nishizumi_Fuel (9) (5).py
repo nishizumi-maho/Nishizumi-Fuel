@@ -38,6 +38,7 @@ class FuelConsumptionMonitor:
         self.root.overrideredirect(True)
         self.root.attributes("-topmost", True)
         self.root.attributes("-alpha", 0.92)
+        self.root.resizable(False, False)
         self._is_dragging = False
 
         self._drag_offset_x = 0
@@ -106,6 +107,8 @@ class FuelConsumptionMonitor:
             fg="#a0f0a0",
             bg="#0f1115",
             padx=8,
+            width=8,
+            anchor="w",
         )
         self.delta_label.pack(side="left")
 
@@ -785,17 +788,14 @@ class FuelConsumptionMonitor:
             position = default_pos
         if position is None:
             self.root.geometry(f"{width}x{height}")
-            return
-        x, y = position
-        self.root.geometry(f"{width}x{height}+{x}+{y}")
+        else:
+            x, y = position
+            self.root.geometry(f"{width}x{height}+{x}+{y}")
+        self.root.minsize(width, height)
+        self.root.maxsize(width, height)
 
     def _get_window_width(self) -> int:
-        top_frame = getattr(self, "top_frame", None)
-        if top_frame is None:
-            return self.WINDOW_WIDTH
-        self.root.update_idletasks()
-        content_width = top_frame.winfo_reqwidth() + 24
-        return max(content_width, 1)
+        return self.WINDOW_WIDTH
 
     def _load_window_position(self) -> Optional[tuple[int, int]]:
         try:
