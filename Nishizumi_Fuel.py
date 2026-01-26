@@ -239,7 +239,6 @@ class FuelConsumptionMonitor:
 
         advanced_buttons = tk.Frame(self.advanced_frame, bg="#0f1115")
         advanced_buttons.pack(fill="x", pady=(4, 0))
-        advanced_buttons.columnconfigure(0, weight=1)
 
         self.plus_one_button = tk.Button(
             advanced_buttons,
@@ -251,7 +250,7 @@ class FuelConsumptionMonitor:
             relief="flat",
             padx=8,
         )
-        self.plus_one_button.grid(row=0, column=0, sticky="ew", pady=(0, 4))
+        self.plus_one_button.pack(side="left", padx=(0, 6))
 
         self.minus_one_button = tk.Button(
             advanced_buttons,
@@ -263,7 +262,7 @@ class FuelConsumptionMonitor:
             relief="flat",
             padx=8,
         )
-        self.minus_one_button.grid(row=1, column=0, sticky="ew")
+        self.minus_one_button.pack(side="left")
 
         self.status_label = tk.Label(
             self.root,
@@ -545,6 +544,13 @@ class FuelConsumptionMonitor:
                     if self._minus_one_laps
                     else None
                 )
+                if planned_laps is None:
+                    stint_text = f"Current stint estimate: expected {base_laps} laps"
+                else:
+                    stint_text = (
+                        "Current stint estimate: planned "
+                        f"{planned_laps} laps, expected {base_laps} laps"
+                    )
                 savings_text = ""
                 if planned_laps is not None and planned_laps >= 1 and target is not None:
                     gain_lap_target = fuel_level / (planned_laps + 1)
@@ -561,7 +567,7 @@ class FuelConsumptionMonitor:
                         savings_lines.append(loss_lap_text)
                     savings_text = "\n".join(savings_lines)
                 self.advanced_info_label.config(text=savings_text)
-                self.advanced_stint_label.config(text="", fg=stint_color)
+                self.advanced_stint_label.config(text=stint_text, fg=stint_color)
                 if self._plus_one_target is not None:
                     self.plus_one_button.config(
                         text=(
