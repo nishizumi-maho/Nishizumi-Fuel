@@ -242,7 +242,7 @@ class FuelConsumptionMonitor:
 
         self.plus_one_button = tk.Button(
             advanced_buttons,
-            text="+1 lap: --",
+            text="+1 lap",
             command=lambda: self._apply_advanced_target("plus"),
             font=("Segoe UI", 9),
             bg="#1c2533",
@@ -254,7 +254,7 @@ class FuelConsumptionMonitor:
 
         self.minus_one_button = tk.Button(
             advanced_buttons,
-            text="-1 lap: --",
+            text="-1lap",
             command=lambda: self._apply_advanced_target("minus"),
             font=("Segoe UI", 9),
             bg="#1c2533",
@@ -544,13 +544,6 @@ class FuelConsumptionMonitor:
                     if self._minus_one_laps
                     else None
                 )
-                if planned_laps is None:
-                    stint_text = f"Current stint estimate: expected {base_laps} laps"
-                else:
-                    stint_text = (
-                        "Current stint estimate: planned "
-                        f"{planned_laps} laps, expected {base_laps} laps"
-                    )
                 savings_text = ""
                 if planned_laps is not None and planned_laps >= 1 and target is not None:
                     gain_lap_target = fuel_level / (planned_laps + 1)
@@ -567,27 +560,21 @@ class FuelConsumptionMonitor:
                         savings_lines.append(loss_lap_text)
                     savings_text = "\n".join(savings_lines)
                 self.advanced_info_label.config(text=savings_text)
-                self.advanced_stint_label.config(text=stint_text, fg=stint_color)
+                self.advanced_stint_label.config(text="", fg=stint_color)
                 if self._plus_one_target is not None:
                     self.plus_one_button.config(
-                        text=(
-                            f"+1 lap ({self._plus_one_laps}): "
-                            f"{self._plus_one_target:.2f} L/lap"
-                        ),
+                        text="+1 lap",
                         state="normal",
                     )
                 else:
-                    self.plus_one_button.config(text="+1 lap: --", state="disabled")
+                    self.plus_one_button.config(text="+1 lap", state="disabled")
                 if self._minus_one_target is not None:
                     self.minus_one_button.config(
-                        text=(
-                            f"-1 lap ({self._minus_one_laps}): "
-                            f"{self._minus_one_target:.2f} L/lap"
-                        ),
+                        text="-1lap",
                         state="normal",
                     )
                 else:
-                    self.minus_one_button.config(text="-1 lap: --", state="disabled")
+                    self.minus_one_button.config(text="-1lap", state="disabled")
             else:
                 self._plus_one_target = None
                 self._minus_one_target = None
@@ -597,8 +584,8 @@ class FuelConsumptionMonitor:
                     text="Waiting for valid laps to estimate the stint..."
                 )
                 self.advanced_stint_label.config(text="", fg="#d4d4d4")
-                self.plus_one_button.config(text="+1 lap: --", state="disabled")
-                self.minus_one_button.config(text="-1 lap: --", state="disabled")
+                self.plus_one_button.config(text="+1 lap", state="disabled")
+                self.minus_one_button.config(text="-1lap", state="disabled")
 
         if self._last_lap_used is not None:
             self.lastlap_label.config(text=f"Last lap: {self._last_lap_used:.2f} L")
