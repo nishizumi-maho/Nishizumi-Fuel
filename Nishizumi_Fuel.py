@@ -156,14 +156,14 @@ class FuelConsumptionMonitor:
             button_row,
             text="R",
             command=self._manual_reset,
-            font=("Segoe UI", 9),
+            font=("Segoe UI", 8),
             bg="#1c2533",
             fg="#e8e8e8",
             relief="flat",
-            padx=4,
-            pady=1,
-            width=2,
-        ).pack(side="left", padx=(0, 6))
+            padx=2,
+            pady=0,
+            width=1,
+        ).pack(side="left", padx=(0, 4))
 
         self.advanced_toggle_button = tk.Button(
             button_row,
@@ -200,7 +200,7 @@ class FuelConsumptionMonitor:
 
         tk.Checkbutton(
             controls_body,
-            text="Lock",
+            text="",
             variable=self.lock_target_var,
             command=self._toggle_target_lock,
             font=("Segoe UI", 9),
