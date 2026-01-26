@@ -61,6 +61,7 @@ class FuelConsumptionMonitor:
         self.target_var = tk.StringVar(value="2.50")
         self.lock_target_var = tk.BooleanVar(value=False)
         self.show_advanced_var = tk.BooleanVar(value=False)
+        self.advanced_toggle_text = tk.StringVar(value="I")
 
         self._position_path = Path.home() / ".fuel_consumption_monitor.json"
         self._apply_window_geometry(default_pos=(60, 60))
@@ -167,7 +168,7 @@ class FuelConsumptionMonitor:
 
         self.advanced_toggle_button = tk.Button(
             button_row,
-            text="I",
+            textvariable=self.advanced_toggle_text,
             command=self._toggle_advanced_info,
             font=("Segoe UI", 9),
             bg="#1c2533",
@@ -175,6 +176,7 @@ class FuelConsumptionMonitor:
             relief="flat",
             padx=6,
             pady=2,
+            takefocus=False,
         )
         self.advanced_toggle_button.pack(side="left")
 
@@ -406,7 +408,7 @@ class FuelConsumptionMonitor:
         else:
             self.advanced_frame.pack_forget()
             self._apply_window_geometry()
-        self.advanced_toggle_button.config(text="I")
+        self.advanced_toggle_text.set("I")
 
     def _apply_advanced_target(self, mode: str) -> None:
         if mode == "plus":
