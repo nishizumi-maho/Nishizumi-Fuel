@@ -226,7 +226,7 @@ class FuelConsumptionMonitor:
         self.advanced_info_label = tk.Label(
             self.advanced_frame,
             text="",
-            font=("Segoe UI", 9),
+            font=("Segoe UI", 11),
             fg="#d4d4d4",
             bg="#0f1115",
             justify="left",
