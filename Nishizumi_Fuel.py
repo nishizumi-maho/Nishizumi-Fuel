@@ -337,14 +337,19 @@ class FuelConsumptionMonitor:
 
         if self._last_lap is not None and lap is not None:
             if lap > self._last_lap and self._lap_start_fuel is not None:
-                self._last_lap_used = max(0.0, self._lap_start_fuel - fuel_level)
+                lap_progress = self._compute_progress(lap, lapdist)
+                lap_used = max(0.0, self._lap_start_fuel - fuel_level)
                 self._lap_start_fuel = fuel_level
-                if (
-                    self._last_lap_used > 0
-                    and not self._is_yellow_flag(session_flags)
-                    and not self._is_anomalous_lap(self._last_lap_used)
-                ):
-                    self._lap_consumptions.append(self._last_lap_used)
+                if lap_progress is None or lap_progress < 1:
+                    self._last_lap_used = None
+                else:
+                    self._last_lap_used = lap_used
+                    if (
+                        self._last_lap_used > 0
+                        and not self._is_yellow_flag(session_flags)
+                        and not self._is_anomalous_lap(self._last_lap_used)
+                    ):
+                        self._lap_consumptions.append(self._last_lap_used)
 
         self._last_fuel = fuel_level
         self._last_lap = lap
@@ -425,8 +430,13 @@ class FuelConsumptionMonitor:
         return deviation >= self.anomaly_threshold
 
     def _filtered_average(self, fallback: Optional[float]) -> Optional[float]:
+        if fallback is None:
+            if self._lap_consumptions:
+                return sum(self._lap_consumptions) / len(self._lap_consumptions)
+            return None
         if self._lap_consumptions:
-            return sum(self._lap_consumptions) / len(self._lap_consumptions)
+            lap_total = sum(self._lap_consumptions)
+            return (lap_total + fallback) / (len(self._lap_consumptions) + 1)
         return fallback
 
     def _update_loop(self) -> None:
