@@ -27,6 +27,7 @@ class FuelConsumptionMonitor:
     WINDOW_WIDTH = 360
     WINDOW_HEIGHT_COLLAPSED = 190
     WINDOW_HEIGHT_EXPANDED = 310
+    LITER_TO_GALLON = 0.2641720524
 
     def __init__(self) -> None:
         self.ir = irsdk.IRSDK()
@@ -53,6 +54,9 @@ class FuelConsumptionMonitor:
         self._last_on_pitroad: Optional[bool] = None
         self._pit_overlay_until: float = 0.0
         self._pit_overlay_value: Optional[float] = None
+        self._display_units: Optional[int] = None
+        self._unit_label = "L"
+        self._connected = False
 
         self.refuel_threshold_l = 0.3
         self.avg_min_progress = 0.05
@@ -288,6 +292,55 @@ class FuelConsumptionMonitor:
         )
         self.pit_overlay_label.pack(expand=True, fill="both", padx=12, pady=16)
 
+    def _set_display_units(self, display_units: Optional[int]) -> None:
+        if display_units not in (0, 1):
+            return
+        if self._display_units is None:
+            self._display_units = display_units
+            self._unit_label = "gal" if display_units == 0 else "L"
+            return
+        if display_units == self._display_units:
+            return
+        previous_units = self._display_units
+        target_liters = self._parse_target_with_units(previous_units)
+        self._display_units = display_units
+        self._unit_label = "gal" if display_units == 0 else "L"
+        if target_liters is not None:
+            target_display = self._from_liters(target_liters)
+            self.target_var.set(f"{target_display:.2f}")
+
+    def _from_liters(self, value: float) -> float:
+        if self._display_units == 0:
+            return value * self.LITER_TO_GALLON
+        return value
+
+    def _to_liters(self, value: float) -> float:
+        if self._display_units == 0:
+            return value / self.LITER_TO_GALLON
+        return value
+
+    def _set_standby_state(self, status_text: str) -> None:
+        unit = self._unit_label
+        self.avg_label.config(text=f"--.-- {unit}/Lap", fg="#c8c8c8")
+        self.delta_label.config(text="(--)", fg="#c8c8c8")
+        self.fuel_label.config(text=f"Fuel: --.-- {unit}")
+        self.laps_label.config(text="Remaining: --.- laps")
+        self.lastlap_label.config(text=f"Last lap: --.- {unit}")
+        self.stint_label.config(text="Stint: (C) --; (E) --", fg="#d4d4d4")
+        self.status_label.config(text=status_text)
+        self._hide_pit_overlay()
+
+    def _set_connection_state(self, connected: bool) -> None:
+        if connected == self._connected:
+            return
+        self._connected = connected
+        if not connected:
+            self._reset_stint()
+            self._last_on_pitroad = None
+            self._pit_overlay_until = 0.0
+            self._pit_overlay_value = None
+            self._set_standby_state("Waiting for iRacing connection...")
+
     def _safe_float(self, key: str) -> Optional[float]:
         try:
             value = self.ir[key]
@@ -395,10 +448,16 @@ class FuelConsumptionMonitor:
         return progress
 
     def _parse_target(self) -> Optional[float]:
+        return self._parse_target_with_units(self._display_units)
+
+    def _parse_target_with_units(self, display_units: Optional[int]) -> Optional[float]:
         try:
-            return float(self.target_var.get().strip())
+            value = float(self.target_var.get().strip())
         except ValueError:
             return None
+        if display_units == 0:
+            return value / self.LITER_TO_GALLON
+        return value
 
     def _toggle_target_lock(self) -> None:
         if self.lock_target_var.get():
@@ -432,7 +491,7 @@ class FuelConsumptionMonitor:
             target = self._minus_one_target
         if target is None:
             return
-        self.target_var.set(f"{target:.2f}")
+        self.target_var.set(f"{self._from_liters(target):.2f}")
         if self.lock_target_var.get():
             self._locked_target = target
         self.status_label.config(text="Target updated from advanced")
@@ -477,9 +536,9 @@ class FuelConsumptionMonitor:
 
     def _show_pit_overlay(self, avg_value: Optional[float]) -> None:
         if avg_value is None:
-            text = "Stint avg\n--.-- L/Lap"
+            text = f"Stint avg\n--.-- {self._unit_label}/Lap"
         else:
-            text = f"Stint avg\n{avg_value:.2f} L/Lap"
+            text = f"Stint avg\n{self._from_liters(avg_value):.2f} {self._unit_label}/Lap"
         self.pit_overlay_label.config(text=text)
         if not self.pit_overlay_frame.winfo_ismapped():
             for frame in (
@@ -506,10 +565,12 @@ class FuelConsumptionMonitor:
     def _update_loop(self) -> None:
         if not getattr(self.ir, "is_initialized", False):
             if not self.ir.startup():
-                self.status_label.config(text="Waiting for iRacing...")
+                self._set_connection_state(False)
                 self.root.after(500, self._update_loop)
                 return
+        self._set_connection_state(True)
 
+        self._set_display_units(self._safe_int("DisplayUnits"))
         fuel_level = self._safe_float("FuelLevel")
         lapdist = self._safe_float("LapDistPct")
         lap = self._safe_int("Lap")
@@ -518,7 +579,8 @@ class FuelConsumptionMonitor:
         on_pit_road = self._safe_bool("OnPitRoad")
 
         if fuel_level is None or lap is None or lapdist is None or not is_on_track:
-            self.status_label.config(text="Waiting for telemetry...")
+            self._reset_stint()
+            self._set_standby_state("Waiting for telemetry...")
             self.root.after(200, self._update_loop)
             return
 
@@ -536,20 +598,30 @@ class FuelConsumptionMonitor:
         target = self._locked_target if self.lock_target_var.get() else self._parse_target()
 
         if avg_per_lap is None:
-            self.avg_label.config(text="--.-- L/Lap", fg="#c8c8c8")
+            self.avg_label.config(
+                text=f"--.-- {self._unit_label}/Lap",
+                fg="#c8c8c8",
+            )
             self.delta_label.config(text="(--)", fg="#c8c8c8")
         else:
-            delta = avg_per_lap - target if target is not None else None
+            display_avg = self._from_liters(avg_per_lap)
+            display_target = self._from_liters(target) if target is not None else None
+            delta = display_avg - display_target if display_target is not None else None
             within_target = target is not None and avg_per_lap <= target
             avg_color = "#6fe38f" if within_target else "#ff6b6b"
             delta_color = avg_color
-            self.avg_label.config(text=f"{avg_per_lap:.2f} L/Lap", fg=avg_color)
+            self.avg_label.config(
+                text=f"{display_avg:.2f} {self._unit_label}/Lap",
+                fg=avg_color,
+            )
             if delta is None:
                 self.delta_label.config(text="(--) ", fg="#c8c8c8")
             else:
                 self.delta_label.config(text=f"({delta:+.2f})", fg=delta_color)
 
-        self.fuel_label.config(text=f"Fuel: {fuel_level:.2f} L")
+        self.fuel_label.config(
+            text=f"Fuel: {self._from_liters(fuel_level):.2f} {self._unit_label}"
+        )
 
         if avg_per_lap and avg_per_lap > 0:
             remaining = fuel_level / avg_per_lap
@@ -601,9 +673,11 @@ class FuelConsumptionMonitor:
                         lose_lap_target = fuel_level / (planned_laps - 1)
                         spend_more = max(0.0, lose_lap_target - target)
                         loss_lap_text = (
-                            f"Use {spend_more:.2f} L/lap more = -1 lap"
+                            f"Use {self._from_liters(spend_more):.2f} {self._unit_label}/lap more = -1 lap"
                         )
-                    savings_lines = [f"Save {save_per_lap:.2f} L/lap = +1 lap"]
+                    savings_lines = [
+                        f"Save {self._from_liters(save_per_lap):.2f} {self._unit_label}/lap = +1 lap"
+                    ]
                     if loss_lap_text:
                         savings_lines.append(loss_lap_text)
                     savings_text = "\n".join(savings_lines)
@@ -636,9 +710,11 @@ class FuelConsumptionMonitor:
                 self.minus_one_button.config(text="-1lap", state="disabled")
 
         if self._last_lap_used is not None:
-            self.lastlap_label.config(text=f"Last lap: {self._last_lap_used:.2f} L")
+            self.lastlap_label.config(
+                text=f"Last lap: {self._from_liters(self._last_lap_used):.2f} {self._unit_label}"
+            )
         else:
-            self.lastlap_label.config(text="Last lap: --.- L")
+            self.lastlap_label.config(text=f"Last lap: --.- {self._unit_label}")
 
         now = time.time()
         if on_pit_road and not self._last_on_pitroad:
