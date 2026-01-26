@@ -82,6 +82,7 @@ class FuelConsumptionMonitor:
 
     def _build_ui(self) -> None:
         top = tk.Frame(self.root, bg="#0f1115")
+        self.top_frame = top
         top.pack(fill="x", padx=12, pady=(10, 4))
 
         self.avg_label = tk.Label(
@@ -145,8 +146,39 @@ class FuelConsumptionMonitor:
         controls = tk.Frame(self.root, bg="#0f1115")
         controls.pack(fill="x", padx=12, pady=(0, 4))
 
+        button_column = tk.Frame(controls, bg="#0f1115")
+        button_column.pack(side="left", anchor="n", padx=(0, 8))
+
+        tk.Button(
+            button_column,
+            text="R",
+            command=self._manual_reset,
+            font=("Segoe UI", 10),
+            bg="#1c2533",
+            fg="#e8e8e8",
+            relief="flat",
+            padx=6,
+            pady=2,
+        ).pack(side="top", pady=(0, 6))
+
+        self.advanced_toggle_button = tk.Button(
+            button_column,
+            text="I",
+            command=self._toggle_advanced_info,
+            font=("Segoe UI", 9),
+            bg="#1c2533",
+            fg="#e8e8e8",
+            relief="flat",
+            padx=6,
+            pady=2,
+        )
+        self.advanced_toggle_button.pack(side="top")
+
+        controls_body = tk.Frame(controls, bg="#0f1115")
+        controls_body.pack(side="left", fill="x", expand=True)
+
         tk.Label(
-            controls,
+            controls_body,
             text="Target L/Lap:",
             font=("Segoe UI", 10),
             fg="#c4c4c4",
@@ -154,7 +186,7 @@ class FuelConsumptionMonitor:
         ).pack(side="left")
 
         self.target_entry = tk.Entry(
-            controls,
+            controls_body,
             textvariable=self.target_var,
             width=6,
             font=("Segoe UI", 10),
@@ -163,7 +195,7 @@ class FuelConsumptionMonitor:
         self.target_entry.pack(side="left", padx=(6, 12))
 
         tk.Checkbutton(
-            controls,
+            controls_body,
             text="Lock",
             variable=self.lock_target_var,
             command=self._toggle_target_lock,
@@ -176,28 +208,7 @@ class FuelConsumptionMonitor:
             relief="flat",
         ).pack(side="left", padx=(0, 10))
 
-        tk.Button(
-            controls,
-            text="Reset",
-            command=self._manual_reset,
-            font=("Segoe UI", 10),
-            bg="#1c2533",
-            fg="#e8e8e8",
-            relief="flat",
-            padx=8,
-        ).pack(side="left")
-
-        self.advanced_toggle_button = tk.Button(
-            controls,
-            text="Insights ▾",
-            command=self._toggle_advanced_info,
-            font=("Segoe UI", 9),
-            bg="#1c2533",
-            fg="#e8e8e8",
-            relief="flat",
-            padx=8,
-        )
-        self.advanced_toggle_button.pack(side="left", padx=(10, 0))
+        self._apply_window_geometry()
 
         self.advanced_frame = tk.Frame(self.root, bg="#0f1115")
         self.advanced_info_label = tk.Label(
@@ -649,7 +660,7 @@ class FuelConsumptionMonitor:
         return True
 
     def _apply_window_geometry(self, default_pos: tuple[int, int] | None = None) -> None:
-        width = self.WINDOW_WIDTH
+        width = self._get_window_width()
         height = (
             self.WINDOW_HEIGHT_EXPANDED
             if self.show_advanced_var.get()
@@ -663,6 +674,14 @@ class FuelConsumptionMonitor:
             return
         x, y = position
         self.root.geometry(f"{width}x{height}+{x}+{y}")
+
+    def _get_window_width(self) -> int:
+        top_frame = getattr(self, "top_frame", None)
+        if top_frame is None:
+            return self.WINDOW_WIDTH
+        self.root.update_idletasks()
+        content_width = top_frame.winfo_reqwidth() + 24
+        return max(content_width, 1)
 
     def _load_window_position(self) -> Optional[tuple[int, int]]:
         try:
