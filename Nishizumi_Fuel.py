@@ -149,20 +149,24 @@ class FuelConsumptionMonitor:
         button_column = tk.Frame(controls, bg="#0f1115")
         button_column.pack(side="left", anchor="n", padx=(0, 8))
 
+        button_row = tk.Frame(button_column, bg="#0f1115")
+        button_row.pack(side="top")
+
         tk.Button(
-            button_column,
+            button_row,
             text="R",
             command=self._manual_reset,
-            font=("Segoe UI", 10),
+            font=("Segoe UI", 9),
             bg="#1c2533",
             fg="#e8e8e8",
             relief="flat",
-            padx=6,
-            pady=2,
-        ).pack(side="top", pady=(0, 6))
+            padx=4,
+            pady=1,
+            width=2,
+        ).pack(side="left", padx=(0, 6))
 
         self.advanced_toggle_button = tk.Button(
-            button_column,
+            button_row,
             text="I",
             command=self._toggle_advanced_info,
             font=("Segoe UI", 9),
@@ -172,7 +176,7 @@ class FuelConsumptionMonitor:
             padx=6,
             pady=2,
         )
-        self.advanced_toggle_button.pack(side="top")
+        self.advanced_toggle_button.pack(side="left")
 
         controls_body = tk.Frame(controls, bg="#0f1115")
         controls_body.pack(side="left", fill="x", expand=True)
