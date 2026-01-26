@@ -403,11 +403,10 @@ class FuelConsumptionMonitor:
         if show_advanced:
             self.advanced_frame.pack(fill="x", padx=12, pady=(0, 6))
             self._apply_window_geometry()
-            self.advanced_toggle_button.config(text="Insights ▴")
         else:
             self.advanced_frame.pack_forget()
             self._apply_window_geometry()
-            self.advanced_toggle_button.config(text="Insights ▾")
+        self.advanced_toggle_button.config(text="I")
 
     def _apply_advanced_target(self, mode: str) -> None:
         if mode == "plus":
