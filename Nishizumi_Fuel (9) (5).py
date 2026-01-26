@@ -24,7 +24,7 @@ class StintState:
 
 
 class FuelConsumptionMonitor:
-    WINDOW_WIDTH = 360
+    MIN_WINDOW_WIDTH = 280
     WINDOW_HEIGHT_COLLAPSED = 190
     WINDOW_HEIGHT_EXPANDED = 310
     LITER_TO_GALLON = 0.2641720524
@@ -795,7 +795,9 @@ class FuelConsumptionMonitor:
         self.root.maxsize(width, height)
 
     def _get_window_width(self) -> int:
-        return self.WINDOW_WIDTH
+        self.root.update_idletasks()
+        requested_width = self.root.winfo_reqwidth()
+        return max(self.MIN_WINDOW_WIDTH, requested_width)
 
     def _load_window_position(self) -> Optional[tuple[int, int]]:
         try:
