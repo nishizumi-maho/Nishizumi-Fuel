@@ -233,16 +233,6 @@ class FuelConsumptionMonitor:
             wraplength=320,
         )
         self.advanced_info_label.pack(anchor="w")
-        self.advanced_stint_label = tk.Label(
-            self.advanced_frame,
-            text="",
-            font=("Segoe UI", 9, "bold"),
-            fg="#d4d4d4",
-            bg="#0f1115",
-            justify="left",
-        )
-        self.advanced_stint_label.pack(anchor="w", pady=(2, 0))
-
         advanced_buttons = tk.Frame(self.advanced_frame, bg="#0f1115")
         advanced_buttons.pack(fill="x", pady=(4, 0))
 
@@ -271,6 +261,16 @@ class FuelConsumptionMonitor:
             pady=4,
         )
         self.minus_one_button.pack(side="left")
+
+        self.advanced_stint_label = tk.Label(
+            self.advanced_frame,
+            text="",
+            font=("Segoe UI", 9, "bold"),
+            fg="#d4d4d4",
+            bg="#0f1115",
+            justify="left",
+        )
+        self.advanced_stint_label.pack(anchor="w", pady=(2, 0))
 
         self.status_label = tk.Label(
             self.root,
