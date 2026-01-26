@@ -51,8 +51,8 @@ class FuelConsumptionMonitor:
         self._lap_consumptions: list[float] = []
         self._locked_target: Optional[float] = None
         self._last_on_pitroad: Optional[bool] = None
-        self._pit_overlay_until: float = 0.0
-        self._pit_overlay_value: Optional[float] = None
+        self._pit_avg_message_until: float = 0.0
+        self._pit_avg_value: Optional[float] = None
 
         self.refuel_threshold_l = 0.3
         self.avg_min_progress = 0.05
@@ -106,7 +106,6 @@ class FuelConsumptionMonitor:
         self.delta_label.pack(side="left")
 
         bottom = tk.Frame(self.root, bg="#0f1115")
-        self.bottom_frame = bottom
         bottom.pack(fill="x", padx=12, pady=(0, 6))
 
         self.fuel_label = tk.Label(
@@ -146,7 +145,6 @@ class FuelConsumptionMonitor:
         self.stint_label.pack(anchor="w")
 
         controls = tk.Frame(self.root, bg="#0f1115")
-        self.controls_frame = controls
         controls.pack(fill="x", padx=12, pady=(0, 4))
 
         button_column = tk.Frame(controls, bg="#0f1115")
@@ -246,25 +244,23 @@ class FuelConsumptionMonitor:
             advanced_buttons,
             text="+1 lap",
             command=lambda: self._apply_advanced_target("plus"),
-            font=("Segoe UI", 11, "bold"),
+            font=("Segoe UI", 9),
             bg="#1c2533",
             fg="#e8e8e8",
             relief="flat",
-            padx=14,
-            pady=4,
+            padx=8,
         )
-        self.plus_one_button.pack(side="left", padx=(0, 12))
+        self.plus_one_button.pack(side="left", padx=(0, 6))
 
         self.minus_one_button = tk.Button(
             advanced_buttons,
             text="-1lap",
             command=lambda: self._apply_advanced_target("minus"),
-            font=("Segoe UI", 11, "bold"),
+            font=("Segoe UI", 9),
             bg="#1c2533",
             fg="#e8e8e8",
             relief="flat",
-            padx=14,
-            pady=4,
+            padx=8,
         )
         self.minus_one_button.pack(side="left")
 
@@ -276,17 +272,6 @@ class FuelConsumptionMonitor:
             bg="#0f1115",
         )
         self.status_label.pack(anchor="w", padx=12, pady=(0, 6))
-
-        self.pit_overlay_frame = tk.Frame(self.root, bg="#0f1115")
-        self.pit_overlay_label = tk.Label(
-            self.pit_overlay_frame,
-            text="Stint avg\n--.-- L/Lap",
-            font=("Segoe UI", 20, "bold"),
-            fg="#6fe38f",
-            bg="#0f1115",
-            justify="center",
-        )
-        self.pit_overlay_label.pack(expand=True, fill="both", padx=12, pady=16)
 
     def _safe_float(self, key: str) -> Optional[float]:
         try:
@@ -470,39 +455,6 @@ class FuelConsumptionMonitor:
             return (lap_total + fallback) / (len(self._lap_consumptions) + 1)
         return fallback
 
-    def _stint_average(self, fallback: Optional[float]) -> Optional[float]:
-        if self._lap_consumptions:
-            return sum(self._lap_consumptions) / len(self._lap_consumptions)
-        return fallback
-
-    def _show_pit_overlay(self, avg_value: Optional[float]) -> None:
-        if avg_value is None:
-            text = "Stint avg\n--.-- L/Lap"
-        else:
-            text = f"Stint avg\n{avg_value:.2f} L/Lap"
-        self.pit_overlay_label.config(text=text)
-        if not self.pit_overlay_frame.winfo_ismapped():
-            for frame in (
-                self.top_frame,
-                self.bottom_frame,
-                self.controls_frame,
-                self.advanced_frame,
-                self.status_label,
-            ):
-                frame.pack_forget()
-            self.pit_overlay_frame.pack(expand=True, fill="both")
-
-    def _hide_pit_overlay(self) -> None:
-        if not self.pit_overlay_frame.winfo_ismapped():
-            return
-        self.pit_overlay_frame.pack_forget()
-        self.top_frame.pack(fill="x", padx=12, pady=(10, 4))
-        self.bottom_frame.pack(fill="x", padx=12, pady=(0, 6))
-        self.controls_frame.pack(fill="x", padx=12, pady=(0, 4))
-        if self.show_advanced_var.get():
-            self.advanced_frame.pack(fill="x", padx=12, pady=(0, 6))
-        self.status_label.pack(anchor="w", padx=12, pady=(0, 6))
-
     def _update_loop(self) -> None:
         if not getattr(self.ir, "is_initialized", False):
             if not self.ir.startup():
@@ -642,20 +594,22 @@ class FuelConsumptionMonitor:
 
         now = time.time()
         if on_pit_road and not self._last_on_pitroad:
-            self._pit_overlay_value = self._stint_average(avg_per_lap)
-            self._pit_overlay_until = now + 10.0
+            self._pit_avg_value = avg_per_lap
+            self._pit_avg_message_until = now + 4.0
 
         self._last_on_pitroad = on_pit_road
 
-        if now < self._pit_hold_until:
+        if now < self._pit_avg_message_until:
+            if self._pit_avg_value is not None:
+                self.status_label.config(
+                    text=f"Pit avg: {self._pit_avg_value:.2f} L/lap"
+                )
+            else:
+                self.status_label.config(text="Pit avg: --.- L/lap")
+        elif now < self._pit_hold_until:
             self.status_label.config(text="PIT")
         elif self._stint is not None:
             self.status_label.config(text="Stint tracking")
-
-        if now < self._pit_overlay_until:
-            self._show_pit_overlay(self._pit_overlay_value)
-        else:
-            self._hide_pit_overlay()
 
         self.root.after(100, self._update_loop)
 
