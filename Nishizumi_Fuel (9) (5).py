@@ -703,7 +703,7 @@ class FuelConsumptionMonitor:
                 self._plus_one_laps = None
                 self._minus_one_laps = None
                 self.advanced_info_label.config(
-                    text="Waiting for valid laps to estimate the stint..."
+                    text="Waiting for data..."
                 )
                 self.advanced_stint_label.config(text="", fg="#d4d4d4")
                 self.plus_one_button.config(text="+1 lap", state="disabled")
