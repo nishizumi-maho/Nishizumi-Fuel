@@ -68,6 +68,7 @@ class FuelConsumptionMonitor:
         self.advanced_toggle_text = tk.StringVar(value="I")
 
         self._position_path = Path.home() / ".fuel_consumption_monitor.json"
+        self._configure_vr_overlay()
         self._apply_window_geometry(default_pos=(60, 60))
 
         self._plus_one_target: Optional[float] = None
@@ -796,6 +797,47 @@ class FuelConsumptionMonitor:
         self.root.update_idletasks()
         content_width = top_frame.winfo_reqwidth() + 24
         return max(content_width, 1)
+
+    def _configure_vr_overlay(self) -> None:
+        if sys.platform != "win32":
+            return
+        try:
+            import ctypes
+            from ctypes import wintypes
+        except Exception:
+            return
+        try:
+            self.root.update_idletasks()
+            hwnd = wintypes.HWND(self.root.winfo_id())
+            get_window_long = ctypes.windll.user32.GetWindowLongW
+            set_window_long = ctypes.windll.user32.SetWindowLongW
+            set_window_pos = ctypes.windll.user32.SetWindowPos
+
+            GWL_EXSTYLE = -20
+            WS_EX_TOOLWINDOW = 0x00000080
+            WS_EX_APPWINDOW = 0x00040000
+            WS_EX_LAYERED = 0x00080000
+            HWND_TOPMOST = -1
+            SWP_NOMOVE = 0x0002
+            SWP_NOSIZE = 0x0001
+            SWP_NOACTIVATE = 0x0010
+            SWP_FRAMECHANGED = 0x0020
+
+            ex_style = get_window_long(hwnd, GWL_EXSTYLE)
+            ex_style |= WS_EX_TOOLWINDOW | WS_EX_LAYERED
+            ex_style &= ~WS_EX_APPWINDOW
+            set_window_long(hwnd, GWL_EXSTYLE, ex_style)
+            set_window_pos(
+                hwnd,
+                HWND_TOPMOST,
+                0,
+                0,
+                0,
+                0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_FRAMECHANGED,
+            )
+        except Exception:
+            return
 
     def _load_window_position(self) -> Optional[tuple[int, int]]:
         try:
