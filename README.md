@@ -13,7 +13,6 @@ around your screen.
 - Advanced insights for +1/-1 lap targets and per-lap savings.
 - Automatic refuel detection and stint reset.
 - Persists window position between launches.
-- Windows VR overlays: applies OpenXR/OpenVR-friendly window styles.
 
 ## Requirements
 
