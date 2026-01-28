@@ -35,7 +35,8 @@ class FuelConsumptionMonitor:
         self.root = tk.Tk()
         self.root.title("Fuel Consumption Monitor")
         self.root.configure(bg="#0f1115")
-        self.root.overrideredirect(True)
+        self.root.overrideredirect(False)
+        self.root.resizable(False, False)
         self.root.attributes("-topmost", True)
         self.root.attributes("-alpha", 0.92)
         self._is_dragging = False
