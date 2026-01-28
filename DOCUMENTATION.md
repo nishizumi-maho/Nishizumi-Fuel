@@ -85,6 +85,8 @@ additional fuel per lap that would cost a lap.
 - The window is always on top, slightly transparent, and frameless.
 - Dragging is disabled while the target is locked to prevent accidental moves.
 - Closing the window persists its position to `~/.fuel_consumption_monitor.json`.
+- On Windows, the overlay uses OpenXR/OpenVR-friendly window styles (tool window +
+  layered) to improve VR compositor compatibility.
 
 ## Troubleshooting
 
