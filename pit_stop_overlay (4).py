@@ -305,6 +305,7 @@ class PitStopOverlay:
 
     def _apply_minimal_mode(self) -> None:
         if self.minimal_mode_var.get():
+            self.title_bar.pack_forget()
             self.inputs_frame.pack_forget()
             self.connection_label.pack_forget()
             self.car_label.pack_forget()
@@ -312,17 +313,24 @@ class PitStopOverlay:
             self.metrics_frame.pack_forget()
             self.status_details_label.pack_forget()
             self.legend_label.pack_forget()
-            self.restore_button.pack(anchor="w", pady=(2, 6))
+            self.restore_button.pack_forget()
+            self.status_frame.configure(text="")
+            self.status_frame.configure(padx=0, pady=0)
+            self.score_label.configure(padx=0, pady=6)
             self.minimal_button.configure(text="Expanded")
-            self.root.geometry("360x180")
+            self.root.geometry("320x72")
             return
 
+        self.title_bar.pack(fill="x", padx=10, pady=(8, 4))
         self.restore_button.pack_forget()
         self.inputs_frame.pack(fill="x")
         self.connection_label.pack(anchor="w", pady=(8, 2))
         self.car_label.pack(anchor="w", pady=(0, 4))
         self.top_separator.pack(fill="x", pady=4)
         self.metrics_frame.pack(fill="x", pady=(6, 8))
+        self.status_frame.configure(text=" Pit rejoin safety ")
+        self.status_frame.configure(padx=10, pady=10)
+        self.score_label.configure(padx=12, pady=10)
         self.status_details_label.pack(anchor="w", pady=(10, 4))
         self.legend_label.pack(anchor="w")
         self.minimal_button.configure(text="Minimal")
