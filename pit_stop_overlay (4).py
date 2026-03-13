@@ -69,6 +69,7 @@ class PitStopOverlay:
         self._fueling_samples: List[float] = []
         self._fuel_rate_autofilled = False
         self._editable_entries: List[tk.Entry] = []
+        self._mousewheel_bound = False
 
         self._build_ui()
 
@@ -128,8 +129,30 @@ class PitStopOverlay:
         )
         self.close_button.pack(side="right")
 
-        self.main_frame = tk.Frame(self.root, bg=self.BG)
-        self.main_frame.pack(fill="both", expand=True)
+        self.scroll_canvas = tk.Canvas(
+            self.root,
+            bg=self.BG,
+            highlightthickness=0,
+            bd=0,
+        )
+        self.scrollbar = tk.Scrollbar(
+            self.root,
+            orient="vertical",
+            command=self.scroll_canvas.yview,
+            troughcolor=self.BG,
+            bg="#253247",
+            activebackground="#334766",
+        )
+        self.scroll_canvas.configure(yscrollcommand=self.scrollbar.set)
+        self.scroll_canvas.pack(side="left", fill="both", expand=True)
+        self.scrollbar.pack(side="right", fill="y")
+
+        self.main_frame = tk.Frame(self.scroll_canvas, bg=self.BG)
+        self._canvas_window = self.scroll_canvas.create_window((0, 0), window=self.main_frame, anchor="nw")
+        self.main_frame.bind("<Configure>", self._on_main_frame_configure)
+        self.scroll_canvas.bind("<Configure>", self._on_canvas_configure)
+        self.scroll_canvas.bind("<Enter>", self._bind_mousewheel)
+        self.scroll_canvas.bind("<Leave>", self._unbind_mousewheel)
 
         self.inputs_frame = tk.LabelFrame(
             self.main_frame,
@@ -294,6 +317,40 @@ class PitStopOverlay:
 
         self.root.bind("<ButtonPress-1>", self._start_move)
         self.root.bind("<B1-Motion>", self._on_move)
+
+    def _on_main_frame_configure(self, _: tk.Event) -> None:
+        self.scroll_canvas.configure(scrollregion=self.scroll_canvas.bbox("all"))
+
+    def _on_canvas_configure(self, event: tk.Event) -> None:
+        self.scroll_canvas.itemconfigure(self._canvas_window, width=event.width)
+
+    def _bind_mousewheel(self, _: tk.Event) -> None:
+        if self._mousewheel_bound:
+            return
+        self.root.bind_all("<MouseWheel>", self._on_mousewheel)
+        self.root.bind_all("<Button-4>", self._on_mousewheel)
+        self.root.bind_all("<Button-5>", self._on_mousewheel)
+        self._mousewheel_bound = True
+
+    def _unbind_mousewheel(self, _: tk.Event) -> None:
+        if not self._mousewheel_bound:
+            return
+        self.root.unbind_all("<MouseWheel>")
+        self.root.unbind_all("<Button-4>")
+        self.root.unbind_all("<Button-5>")
+        self._mousewheel_bound = False
+
+    def _on_mousewheel(self, event: tk.Event) -> None:
+        if not self.scroll_canvas.winfo_exists():
+            return
+        if hasattr(event, "delta") and event.delta:
+            direction = -1 if event.delta > 0 else 1
+            self.scroll_canvas.yview_scroll(direction, "units")
+            return
+        if getattr(event, "num", None) == 4:
+            self.scroll_canvas.yview_scroll(-1, "units")
+        elif getattr(event, "num", None) == 5:
+            self.scroll_canvas.yview_scroll(1, "units")
 
     def _toggle_minimal_mode(self) -> None:
         self.minimal_mode_var.set(not self.minimal_mode_var.get())
