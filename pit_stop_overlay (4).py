@@ -22,6 +22,7 @@ class PitStopOverlay:
     BG = "#0f1115"
     PANEL = "#171a21"
     PANEL_ALT = "#1d2230"
+    CARD = "#22293a"
     TEXT = "#f2f2f2"
     MUTED = "#9aa4b2"
     ENTRY_BG = "#101826"
@@ -92,6 +93,23 @@ class PitStopOverlay:
             bg=self.BG,
         ).pack(anchor="w")
 
+        self.minimal_button = tk.Button(
+            self.title_bar,
+            text="Minimal",
+            command=self._toggle_minimal_mode,
+            font=("Segoe UI", 9, "bold"),
+            bg="#1f2533",
+            fg=self.TEXT,
+            activebackground="#2b3447",
+            activeforeground="white",
+            relief="flat",
+            padx=10,
+            pady=2,
+            takefocus=False,
+            cursor="hand2",
+        )
+        self.minimal_button.pack(side="right", padx=(0, 6))
+
         self.close_button = tk.Button(
             self.title_bar,
             text="✕",
@@ -106,6 +124,7 @@ class PitStopOverlay:
             padx=0,
             pady=0,
             takefocus=False,
+            cursor="hand2",
         )
         self.close_button.pack(side="right")
 
@@ -175,6 +194,22 @@ class PitStopOverlay:
         )
         minimal_mode_check.grid(row=6, column=0, columnspan=2, sticky="w", pady=(2, 2))
 
+        self.restore_button = tk.Button(
+            self.main_frame,
+            text="← Exit minimal mode",
+            command=self._exit_minimal_mode,
+            font=("Segoe UI", 9, "bold"),
+            bg="#1f2533",
+            fg=self.TEXT,
+            activebackground="#2b3447",
+            activeforeground="white",
+            relief="flat",
+            padx=10,
+            pady=4,
+            takefocus=False,
+            cursor="hand2",
+        )
+
         self.connection_label = tk.Label(
             self.main_frame,
             textvariable=self.connection_var,
@@ -226,7 +261,7 @@ class PitStopOverlay:
             self.status_frame,
             textvariable=self.window_var,
             font=("Segoe UI", 28, "bold"),
-            bg="#3e495f",
+            bg=self.CARD,
             fg="white",
             padx=12,
             pady=10,
@@ -260,6 +295,14 @@ class PitStopOverlay:
         self.root.bind("<ButtonPress-1>", self._start_move)
         self.root.bind("<B1-Motion>", self._on_move)
 
+    def _toggle_minimal_mode(self) -> None:
+        self.minimal_mode_var.set(not self.minimal_mode_var.get())
+        self._apply_minimal_mode()
+
+    def _exit_minimal_mode(self) -> None:
+        self.minimal_mode_var.set(False)
+        self._apply_minimal_mode()
+
     def _apply_minimal_mode(self) -> None:
         if self.minimal_mode_var.get():
             self.inputs_frame.pack_forget()
@@ -269,9 +312,12 @@ class PitStopOverlay:
             self.metrics_frame.pack_forget()
             self.status_details_label.pack_forget()
             self.legend_label.pack_forget()
-            self.root.geometry("300x130")
+            self.restore_button.pack(anchor="w", pady=(2, 6))
+            self.minimal_button.configure(text="Expanded")
+            self.root.geometry("360x180")
             return
 
+        self.restore_button.pack_forget()
         self.inputs_frame.pack(fill="x")
         self.connection_label.pack(anchor="w", pady=(8, 2))
         self.car_label.pack(anchor="w", pady=(0, 4))
@@ -279,6 +325,7 @@ class PitStopOverlay:
         self.metrics_frame.pack(fill="x", pady=(6, 8))
         self.status_details_label.pack(anchor="w", pady=(10, 4))
         self.legend_label.pack(anchor="w")
+        self.minimal_button.configure(text="Minimal")
         self.root.geometry("500x440")
 
     def _row_entry(
