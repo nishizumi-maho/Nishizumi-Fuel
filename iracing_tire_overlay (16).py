@@ -506,24 +506,43 @@ class TelemetryReader(threading.Thread):
         self.last_meta = {"TrackName": "", "TrackConfigName": "", "CarPath": ""}
 
     @staticmethod
-    def _safe_float(v, default=0.0) -> float:
+    def _sequence_types() -> Tuple[type, ...]:
+        ndarray_type = getattr(np, "ndarray", None)
+        if isinstance(ndarray_type, type):
+            return (list, tuple, ndarray_type)
+        return (list, tuple)
+
+    @classmethod
+    def _unwrap_telemetry_value(cls, v, default, preferred_index: Optional[int] = None):
+        sequence_types = cls._sequence_types()
+        used_preferred_index = False
+        while isinstance(v, sequence_types):
+            if len(v) == 0:
+                return default
+            idx = 0
+            if (
+                preferred_index is not None
+                and not used_preferred_index
+                and 0 <= preferred_index < len(v)
+            ):
+                idx = preferred_index
+                used_preferred_index = True
+            v = v[idx]
+        return v
+
+    @classmethod
+    def _safe_float(cls, v, default=0.0, preferred_index: Optional[int] = None) -> float:
         try:
-            while isinstance(v, (list, tuple, np.ndarray)):
-                if len(v) == 0:
-                    return float(default)
-                v = v[0]
+            v = cls._unwrap_telemetry_value(v, default, preferred_index=preferred_index)
             return float(v) if v is not None else float(default)
         except Exception as exc:
             log_warning_limited("telemetry_safe_float", "Telemetry float conversion failed", exc, interval_s=10.0)
             return float(default)
 
-    @staticmethod
-    def _safe_int(v, default=0) -> int:
+    @classmethod
+    def _safe_int(cls, v, default=0, preferred_index: Optional[int] = None) -> int:
         try:
-            while isinstance(v, (list, tuple, np.ndarray)):
-                if len(v) == 0:
-                    return int(default)
-                v = v[0]
+            v = cls._unwrap_telemetry_value(v, default, preferred_index=preferred_index)
             return int(v) if v is not None else int(default)
         except Exception as exc:
             log_warning_limited("telemetry_safe_int", "Telemetry int conversion failed", exc, interval_s=10.0)
@@ -684,11 +703,14 @@ class TelemetryReader(threading.Thread):
                     continue
 
                 meta = self._parse_metadata()
+                player_car_idx = self._safe_int(self.ir["PlayerCarIdx"], 0)
                 wear = {}
                 for tire, fields in WEAR_FIELDS.items():
                     inner_index = INNER_WEAR_INDEX[tire]
                     inner_field = fields[inner_index]
-                    wear[tire] = self._normalize_wear_value(self._safe_float(self.ir[inner_field], 100.0))
+                    wear[tire] = self._normalize_wear_value(
+                        self._safe_float(self.ir[inner_field], 100.0, preferred_index=player_car_idx)
+                    )
 
                 snap = TelemetrySnapshot(
                     session_time=self._safe_float(self.ir["SessionTime"], 0.0),
