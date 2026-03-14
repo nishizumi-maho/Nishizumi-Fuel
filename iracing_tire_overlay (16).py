@@ -323,6 +323,26 @@ class StintTracker:
         curr_progress = float(current.lap) + float(current.lap_dist_pct)
         return max(0.0, curr_progress - prev_progress)
 
+    def _start_stint(self, snapshot: TelemetrySnapshot, speed_kmh: float):
+        """Initialize a new stint from the current telemetry snapshot."""
+
+        fresh_tires = bool(self.stopped_in_pit)
+        start_wear = {t: 100.0 for t in TIRE_KEYS} if fresh_tires else dict(snapshot.wear)
+        self.in_stint = True
+        self.start_data = {
+            "wear": start_wear,
+            "session_time": snapshot.session_time,
+            "lap": snapshot.lap,
+            "lap_progress": float(snapshot.lap) + float(snapshot.lap_dist_pct),
+            "energy": self.current_energy,
+            "track_temp": snapshot.track_temp,
+            "air_temp": snapshot.air_temp,
+            "key": self.make_dataset_key(snapshot),
+        }
+        self.lap_times = []
+        self.min_speed_kmh = speed_kmh
+        self.stopped_in_pit = False
+
     def update(self, snapshot: TelemetrySnapshot) -> Optional[dict]:
         speed_kmh = snapshot.speed_mps * 3.6
         self.min_speed_kmh = min(self.min_speed_kmh, speed_kmh)
@@ -351,24 +371,14 @@ class StintTracker:
         if self.prev_on_pit is None:
             self.prev_on_pit = snapshot.on_pit_road
 
+            # App can start while already on-track. Bootstrap a stint so live wear
+            # and first learning sample work without requiring a full pit cycle first.
+            if not snapshot.on_pit_road:
+                self._start_stint(snapshot, speed_kmh)
+
         # Stint start: in pit before, now not in pit.
         if (not snapshot.on_pit_road) and bool(self.prev_on_pit):
-            fresh_tires = bool(self.stopped_in_pit)
-            start_wear = {t: 100.0 for t in TIRE_KEYS} if fresh_tires else dict(snapshot.wear)
-            self.in_stint = True
-            self.start_data = {
-                "wear": start_wear,
-                "session_time": snapshot.session_time,
-                "lap": snapshot.lap,
-                "lap_progress": float(snapshot.lap) + float(snapshot.lap_dist_pct),
-                "energy": self.current_energy,
-                "track_temp": snapshot.track_temp,
-                "air_temp": snapshot.air_temp,
-                "key": self.make_dataset_key(snapshot),
-            }
-            self.lap_times = []
-            self.min_speed_kmh = speed_kmh
-            self.stopped_in_pit = False
+            self._start_stint(snapshot, speed_kmh)
 
         # Stint end: was out of pit, now entered pit.
         if snapshot.on_pit_road and (not bool(self.prev_on_pit)) and self.in_stint:
