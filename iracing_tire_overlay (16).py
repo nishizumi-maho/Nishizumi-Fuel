@@ -14,7 +14,7 @@ Install:
 Run:
     python iracing_tire_overlay.py
 """
-
+from __future__ import annotations
 import json
 import os
 import queue
