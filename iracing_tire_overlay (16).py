@@ -508,7 +508,7 @@ class TelemetryReader(threading.Thread):
     @staticmethod
     def _safe_float(v, default=0.0) -> float:
         try:
-            if isinstance(v, (list, tuple, np.ndarray)):
+            while isinstance(v, (list, tuple, np.ndarray)):
                 if len(v) == 0:
                     return float(default)
                 v = v[0]
@@ -520,7 +520,7 @@ class TelemetryReader(threading.Thread):
     @staticmethod
     def _safe_int(v, default=0) -> int:
         try:
-            if isinstance(v, (list, tuple, np.ndarray)):
+            while isinstance(v, (list, tuple, np.ndarray)):
                 if len(v) == 0:
                     return int(default)
                 v = v[0]
