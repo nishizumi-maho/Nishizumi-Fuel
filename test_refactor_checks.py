@@ -184,9 +184,32 @@ def test_debounced_save_and_final_flush():
         assert len(calls) == 1
 
 
+def test_safe_float_prefers_player_car_index_for_arrays():
+    reader = overlay.TelemetryReader.__new__(overlay.TelemetryReader)
+    values = [99.0, 97.5, 96.0]
+    chosen = reader._safe_float(values, 100.0, preferred_index=1)
+    assert abs(chosen - 97.5) < 1e-9
+
+
+def test_safe_float_still_handles_missing_numpy_ndarray_symbol():
+    original_ndarray = getattr(overlay.np, "ndarray", None)
+    had_ndarray = hasattr(overlay.np, "ndarray")
+    try:
+        if had_ndarray:
+            delattr(overlay.np, "ndarray")
+        reader = overlay.TelemetryReader.__new__(overlay.TelemetryReader)
+        chosen = reader._safe_float((88.0, 77.0), 100.0, preferred_index=1)
+        assert abs(chosen - 77.0) < 1e-9
+    finally:
+        if had_ndarray:
+            setattr(overlay.np, "ndarray", original_ndarray)
+
+
 if __name__ == "__main__":
     test_dataset_key_normalization()
     test_humidity_propagates_to_stint_end_payload()
     test_cumulative_lap_progress_energy_per_lap_calculation()
     test_debounced_save_and_final_flush()
+    test_safe_float_prefers_player_car_index_for_arrays()
+    test_safe_float_still_handles_missing_numpy_ndarray_symbol()
     print("ok")
