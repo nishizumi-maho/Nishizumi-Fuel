@@ -12,7 +12,7 @@ Single-file application that:
 Install:
     pip install irsdk numpy pyqt5
 Run:
-    python iracing_tire_overlay.py
+    python tirewear.py
 """
 from __future__ import annotations
 import json
@@ -76,6 +76,35 @@ class DataStorage:
         self.path = path
         self.lock = threading.Lock()
         self.data = self._load()
+        self._ensure_model_file_exists()
+
+    def _ensure_model_file_exists(self):
+        """Create/validate the model file early so first-run failures are visible."""
+        model_dir = os.path.dirname(self.path)
+        if model_dir:
+            os.makedirs(model_dir, exist_ok=True)
+
+        if not os.path.exists(self.path):
+            try:
+                with open(self.path, "w", encoding="utf-8") as f:
+                    json.dump(self.data, f, indent=2)
+            except Exception:
+                # Non-fatal: app can continue and retry on explicit save.
+                return
+
+        try:
+            with open(self.path, "r", encoding="utf-8") as f:
+                raw = json.load(f)
+            if isinstance(raw, dict):
+                self.data = raw
+        except Exception:
+            # Corrupt/unreadable file: reset in-memory data and rewrite.
+            self.data = {}
+            try:
+                with open(self.path, "w", encoding="utf-8") as f:
+                    json.dump(self.data, f, indent=2)
+            except Exception:
+                pass
 
     def _load(self) -> Dict[str, dict]:
         if not os.path.exists(self.path):

@@ -22,7 +22,7 @@ python Nishizumi_Fuel.py
 
 ---
 
-### 2) Nishizumi TireWear (`Nishizumi_TireWear.py`)
+### 2) Nishizumi TireWear (`tirewear.py`)
 A PyQt5 overlay that learns tire wear behavior from live telemetry.
 
 **What it does**
@@ -33,7 +33,7 @@ A PyQt5 overlay that learns tire wear behavior from live telemetry.
 
 **Run**
 ```bash
-python Nishizumi_TireWear.py
+python tirewear.py
 ```
 
 ---
@@ -105,7 +105,7 @@ python menu.py
 ## Repository structure
 
 - `Nishizumi_Fuel.py`
-- `Nishizumi_TireWear.py`
+- `tirewear.py`
 - `Nishizumi_PitTime.py`
 - `Nishizumi_Traction.py`
 - `menu.py`

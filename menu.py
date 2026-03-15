@@ -72,7 +72,7 @@ class MenuApp:
         AppEntry(
             key="tirewear",
             display_name="Nishizumi TireWear",
-            script_name="Nishizumi_TireWear.py",
+            script_name="tirewear.py",
             description="Adaptive tire wear model and overlay.",
         ),
         AppEntry(
