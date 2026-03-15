@@ -400,10 +400,10 @@ class TractionCircleOverlay:
     @staticmethod
     def _phase_and_recommendation(neg_long: float, lat: float, pos_long: float) -> Tuple[str, str]:
         if neg_long > max(lat, pos_long):
-            return "Entry", "Brake 5-10m later or reduce initial brake pressure."
+            return "Entry", "You are leaving grip on the table while braking. Try braking 5-10m later, or ease off peak brake pressure so rotation stays smooth."
         if lat >= max(neg_long, pos_long):
-            return "Mid-corner", "Carry more speed at the apex while maintaining stability."
-        return "Exit", "Apply throttle progressively earlier on corner exit."
+            return "Mid-corner", "You can likely carry a bit more minimum speed. Release the brakes earlier, let the car rotate, and aim for a cleaner apex."
+        return "Exit", "There is room on corner exit. Start feeding throttle a touch earlier and build it progressively to avoid wheelspin."
 
     @staticmethod
     def _severity_label(delta_g: float) -> str:
@@ -525,30 +525,35 @@ class TractionCircleOverlay:
     @staticmethod
     def _format_summary(segments: Sequence[UnderuseSegment], compact_mode: bool) -> str:
         if not segments:
-            return "No robust opportunities yet. Complete more valid laps."
+            return "No clear coaching tips yet. Keep driving clean, valid laps so the app can learn your baseline."
 
         top3 = list(segments[:3])
-        lines = ["Top 3 opportunities (sorted by Δg):"]
+        lines = [
+            "Top 3 improvement areas (largest grip gap first):",
+            "Tip: Δg is the grip difference between your current pace and the learned reference.",
+        ]
         for seg in top3:
             lines.append(
-                f"• {seg.start_percent*100:.1f}-{seg.end_percent*100:.1f}% | Δ{seg.delta_g:.2f}g | "
-                f"{seg.phase} | trend: {seg.trend} | consistency: {seg.consistency:.0f}%"
+                f"• Lap {seg.start_percent*100:.1f}% to {seg.end_percent*100:.1f}% | Δ{seg.delta_g:.2f}g | "
+                f"{seg.phase} phase | trend: {seg.trend} | seen in {seg.consistency:.0f}% of valid laps"
             )
             lines.append(f"  ↳ {TractionCircleOverlay._lapdist_hint(seg.start_percent, seg.end_percent, seg.peak_percent)}")
+            lines.append(f"  ↳ What to try next lap: {seg.recommendation}")
 
         if compact_mode:
-            lines.append("\nCompact: showing only main opportunities.")
+            lines.append("\nCompact mode: showing only the highest-impact opportunities.")
             return "\n".join(lines)
 
-        lines.append("\nDetailed:")
+        lines.append("\nDetailed breakdown:")
         for seg in segments:
+            confidence_label = "high confidence" if seg.confidence else "low confidence (needs more clean laps)"
             lines.append(
-                f"- {seg.start_percent*100:.1f}-{seg.end_percent*100:.1f}% "
-                f"(peak {seg.peak_percent*100:.1f}%): ref {seg.reference_g:.2f}g / current {seg.achieved_g:.2f}g / "
-                f"Δ{seg.delta_g:.2f}g / severity {seg.severity} / confidence {'high' if seg.confidence else 'low'}"
+                f"- Lap {seg.start_percent*100:.1f}% to {seg.end_percent*100:.1f}% "
+                f"(largest gap near {seg.peak_percent*100:.1f}%): reference {seg.reference_g:.2f}g vs your {seg.achieved_g:.2f}g, "
+                f"so Δ{seg.delta_g:.2f}g ({seg.severity} priority, {confidence_label})."
             )
             lines.append(f"  {TractionCircleOverlay._lapdist_hint(seg.start_percent, seg.end_percent, seg.peak_percent)}")
-            lines.append(f"  Phase {seg.phase}: {seg.recommendation}")
+            lines.append(f"  Why this matters ({seg.phase}): {seg.recommendation}")
         return "\n".join(lines)
 
     def _draw_circle(self, long_g: float, lat_g: float) -> None:
@@ -592,7 +597,7 @@ class TractionCircleOverlay:
             self.root.after(400, self._update)
             return
 
-        self.status_var.set("Connected. 60 Hz telemetry / 60 ms UI refresh.")
+        self.status_var.set("Connected. Live telemetry active (60 Hz stream / 60 ms refresh).")
 
         context_key, track_name, car_name, session_name = self._detect_context()
         if self.context_key and context_key != self.context_key:
@@ -633,7 +638,7 @@ class TractionCircleOverlay:
             if self.external_reference_bins is not None:
                 segments: List[UnderuseSegment] = []
                 self.summary_var.set(
-                    f"IBT loaded. Complete {laps_left} more valid lap(s) for coaching vs pro baseline."
+                    f"IBT reference is loaded. Drive {laps_left} more clean valid lap(s), then coaching will compare you against that baseline."
                 )
             else:
                 segments = self._detect_underuse_segments(valid_laps, reference)
