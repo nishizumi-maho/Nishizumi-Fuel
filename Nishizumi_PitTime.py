@@ -109,25 +109,7 @@ class PitStopOverlay:
             takefocus=False,
             cursor="hand2",
         )
-        self.minimal_button.pack(side="right", padx=(0, 6))
-
-        self.close_button = tk.Button(
-            self.title_bar,
-            text="✕",
-            command=self.root.destroy,
-            font=("Segoe UI", 10, "bold"),
-            bg="#1f2533",
-            fg=self.TEXT,
-            activebackground="#2b3447",
-            activeforeground="white",
-            relief="flat",
-            width=2,
-            padx=0,
-            pady=0,
-            takefocus=False,
-            cursor="hand2",
-        )
-        self.close_button.pack(side="right")
+        self.minimal_button.pack(side="right")
 
         self.scroll_canvas = tk.Canvas(
             self.root,
@@ -218,17 +200,18 @@ class PitStopOverlay:
         minimal_mode_check.grid(row=6, column=0, columnspan=2, sticky="w", pady=(2, 2))
 
         self.restore_button = tk.Button(
-            self.main_frame,
-            text="← Exit minimal mode",
+            self.root,
+            text="⚙",
             command=self._exit_minimal_mode,
-            font=("Segoe UI", 9, "bold"),
+            font=("Segoe UI", 8, "bold"),
             bg="#1f2533",
             fg=self.TEXT,
             activebackground="#2b3447",
             activeforeground="white",
             relief="flat",
-            padx=10,
-            pady=4,
+            width=2,
+            padx=0,
+            pady=0,
             takefocus=False,
             cursor="hand2",
         )
@@ -370,7 +353,7 @@ class PitStopOverlay:
             self.metrics_frame.pack_forget()
             self.status_details_label.pack_forget()
             self.legend_label.pack_forget()
-            self.restore_button.pack_forget()
+            self.restore_button.place(relx=1.0, x=-8, y=8, anchor="ne")
             self.status_frame.configure(text="")
             self.status_frame.configure(padx=0, pady=0)
             self.score_label.configure(padx=0, pady=6)
@@ -379,7 +362,7 @@ class PitStopOverlay:
             return
 
         self.title_bar.pack(fill="x", padx=10, pady=(8, 4))
-        self.restore_button.pack_forget()
+        self.restore_button.place_forget()
         self.inputs_frame.pack(fill="x")
         self.connection_label.pack(anchor="w", pady=(8, 2))
         self.car_label.pack(anchor="w", pady=(0, 4))
