@@ -6,13 +6,13 @@ Single-file application that:
 - Reads live telemetry from iRacing (irsdk) at 60 Hz
 - Detects stints and learns tire wear behavior over time
 - Uses driving load (|LatAccel| * Speed) and temperature modeling
-- Saves learned data by track+config+car into nishizumi_tirewear_model.json
+- Saves learned data by track+config+car into iracing_tire_model.json
 - Shows a transparent overlay HUD and a settings/info menu (PyQt5)
 
 Install:
     pip install irsdk numpy pyqt5
 Run:
-    python Nishizumi_TireWear.py
+    python iracing_tire_overlay.py
 """
 from __future__ import annotations
 import json
@@ -30,8 +30,8 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 import irsdk
 
 
-MODEL_PATH = "nishizumi_tirewear_model.json"
-SETTINGS_PATH = "nishizumi_tirewear_settings.json"
+MODEL_PATH = "iracing_tire_model.json"
+SETTINGS_PATH = "iracing_tire_overlay_settings.json"
 TIRE_KEYS = ("lf", "rf", "lr", "rr")
 WEAR_FIELDS = {
     "lf": ("LFwearL", "LFwearM", "LFwearR"),
@@ -79,15 +79,24 @@ class DataStorage:
         self._ensure_model_file_exists()
 
     def _ensure_model_file_exists(self):
-        """Create an empty model file so persistence is visible before first sample."""
-        if os.path.exists(self.path):
-            return
-        try:
-            with open(self.path, "w", encoding="utf-8") as f:
-                json.dump(self.data, f, indent=2)
-        except Exception:
-            # Non-fatal: learning can still proceed and save later.
-            pass
+        """Guarantee model path exists and contains a valid JSON object."""
+        with self.lock:
+            if os.path.exists(self.path):
+                try:
+                    with open(self.path, "r", encoding="utf-8") as f:
+                        raw = json.load(f)
+                    if isinstance(raw, dict):
+                        return
+                except Exception:
+                    pass
+            self._write_data(self.data)
+
+    def _write_data(self, payload: Dict[str, dict]):
+        os.makedirs(os.path.dirname(os.path.abspath(self.path)), exist_ok=True)
+        tmp = self.path + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(payload, f, indent=2)
+        os.replace(tmp, self.path)
 
     def _load(self) -> Dict[str, dict]:
         if not os.path.exists(self.path):
@@ -101,10 +110,7 @@ class DataStorage:
 
     def save(self):
         with self.lock:
-            tmp = self.path + ".tmp"
-            with open(tmp, "w", encoding="utf-8") as f:
-                json.dump(self.data, f, indent=2)
-            os.replace(tmp, self.path)
+            self._write_data(self.data)
 
     def get_samples(self, key: str) -> List[dict]:
         with self.lock:
@@ -945,7 +951,6 @@ class OverlayUI(QtWidgets.QWidget):
 
         self.label = QtWidgets.QLabel(self)
         self.label.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop)
-        self.label.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents, True)
 
         self.btn_info = QtWidgets.QPushButton("ℹ", self)
         self.btn_info.setFixedWidth(28)
@@ -955,15 +960,10 @@ class OverlayUI(QtWidgets.QWidget):
         self.btn_settings.setFixedWidth(28)
         self.btn_settings.clicked.connect(self.open_settings)
 
-        self.btn_close_overlay = QtWidgets.QPushButton("✕", self)
-        self.btn_close_overlay.setFixedWidth(28)
-        self.btn_close_overlay.clicked.connect(QtWidgets.QApplication.quit)
-
         top_row = QtWidgets.QHBoxLayout()
         top_row.addStretch(1)
         top_row.addWidget(self.btn_info)
         top_row.addWidget(self.btn_settings)
-        top_row.addWidget(self.btn_close_overlay)
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.addLayout(top_row)
@@ -1107,14 +1107,14 @@ class OverlayUI(QtWidgets.QWidget):
         self.label.setText("<br>".join(lines))
 
     def reset_all_data(self):
-        confirm_box = self._build_light_message_box(
-            icon=QtWidgets.QMessageBox.Warning,
-            title="Reset data",
-            text="This will clear learned tire model data and current session memory. Continue?",
-            buttons=QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
-            default_button=QtWidgets.QMessageBox.No,
+        answer = QtWidgets.QMessageBox.question(
+            self,
+            "Reset data",
+            "This will clear learned tire model data and current session memory. Continue?",
+            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+            QtWidgets.QMessageBox.No,
         )
-        if confirm_box.exec_() != QtWidgets.QMessageBox.Yes:
+        if answer != QtWidgets.QMessageBox.Yes:
             return
 
         # Clear persisted model samples.
@@ -1137,52 +1137,7 @@ class OverlayUI(QtWidgets.QWidget):
                 reset_requested=True,
             )
 
-        done_box = self._build_light_message_box(
-            icon=QtWidgets.QMessageBox.Information,
-            title="Reset complete",
-            text="All learned data was cleared.",
-            buttons=QtWidgets.QMessageBox.Ok,
-            default_button=QtWidgets.QMessageBox.Ok,
-        )
-        done_box.exec_()
-
-    def _build_light_message_box(
-        self,
-        icon: QtWidgets.QMessageBox.Icon,
-        title: str,
-        text: str,
-        buttons: QtWidgets.QMessageBox.StandardButtons,
-        default_button: QtWidgets.QMessageBox.StandardButton,
-    ) -> QtWidgets.QMessageBox:
-        box = QtWidgets.QMessageBox(self)
-        box.setIcon(icon)
-        box.setWindowTitle(title)
-        box.setText(text)
-        box.setStandardButtons(buttons)
-        box.setDefaultButton(default_button)
-        box.setStyleSheet(
-            """
-            QMessageBox {
-                background-color: white;
-                color: black;
-            }
-            QLabel {
-                color: black;
-                background: transparent;
-            }
-            QPushButton {
-                background-color: white;
-                color: black;
-                border: 1px solid #BDBDBD;
-                padding: 4px 10px;
-                min-width: 72px;
-            }
-            QPushButton:hover {
-                background-color: #F2F2F2;
-            }
-            """
-        )
-        return box
+        QtWidgets.QMessageBox.information(self, "Reset complete", "All learned data was cleared.")
 
     def mousePressEvent(self, e: QtGui.QMouseEvent):
         if e.button() == QtCore.Qt.LeftButton:
