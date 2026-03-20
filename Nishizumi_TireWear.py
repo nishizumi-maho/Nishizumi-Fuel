@@ -470,6 +470,7 @@ class StintTracker:
                 "min_speed_kmh": self.min_speed_kmh,
                 "track_temp": float(snapshot.track_temp),
                 "air_temp": float(snapshot.air_temp),
+                "humidity": float(snapshot.humidity),
                 "energy_per_lap": float(energy_per_lap),
                 "wear_per_lap": wear_per_lap,
                 "wear_per_energy": wear_per_energy,
