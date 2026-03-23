@@ -32,9 +32,9 @@ class StintState:
 
 
 class FuelConsumptionMonitor:
-    WINDOW_WIDTH = 360
-    WINDOW_HEIGHT_COLLAPSED = 190
-    WINDOW_HEIGHT_EXPANDED = 310
+    WINDOW_WIDTH = 420
+    WINDOW_HEIGHT_COLLAPSED = 260
+    WINDOW_HEIGHT_EXPANDED = 410
     LITER_TO_GALLON = 0.2641720524
 
     def __init__(self) -> None:
@@ -42,10 +42,10 @@ class FuelConsumptionMonitor:
 
         self.root = tk.Tk()
         self.root.title("Fuel Consumption Monitor")
-        self.root.configure(bg="#0f1115")
+        self.root.configure(bg="#08111f")
         self.root.overrideredirect(True)
         self.root.attributes("-topmost", True)
-        self.root.attributes("-alpha", 0.92)
+        self.root.attributes("-alpha", 0.96)
         self._is_dragging = False
 
         self._drag_offset_x = 0
@@ -73,7 +73,6 @@ class FuelConsumptionMonitor:
         self.target_var = tk.StringVar(value="2.50")
         self.lock_target_var = tk.BooleanVar(value=False)
         self.show_advanced_var = tk.BooleanVar(value=False)
-        self.advanced_toggle_text = tk.StringVar(value="I")
 
         self._position_path = _get_appdata_dir() / "fuel_consumption_monitor.json"
         self._apply_window_geometry(default_pos=(60, 60))
@@ -93,168 +92,315 @@ class FuelConsumptionMonitor:
 
         self._update_loop()
 
+    def _create_surface(self, parent: tk.Widget, *, bg: str, **pack_kwargs: object) -> tk.Frame:
+        frame = tk.Frame(
+            parent,
+            bg=bg,
+            bd=0,
+            highlightthickness=1,
+            highlightbackground="#1a2940",
+            highlightcolor="#1a2940",
+        )
+        if pack_kwargs:
+            frame.pack(**pack_kwargs)
+        return frame
+
+    def _create_value_card(
+        self,
+        parent: tk.Widget,
+        *,
+        title: str,
+        value: str,
+        accent: str,
+    ) -> tuple[tk.Frame, tk.Label]:
+        card = self._create_surface(parent, bg="#101a2e", side="left", fill="both", expand=True)
+        label = tk.Label(
+            card,
+            text=title,
+            font=("Segoe UI", 9, "bold"),
+            fg="#8ba6c9",
+            bg="#101a2e",
+            anchor="w",
+        )
+        label.pack(anchor="w", padx=12, pady=(10, 2))
+        value_label = tk.Label(
+            card,
+            text=value,
+            font=("Segoe UI", 16, "bold"),
+            fg=accent,
+            bg="#101a2e",
+            anchor="w",
+        )
+        value_label.pack(anchor="w", padx=12, pady=(0, 10))
+        return card, value_label
+
+    def _style_button(
+        self,
+        button: tk.Button,
+        *,
+        bg: str,
+        fg: str = "#f3f7ff",
+        active_bg: str,
+    ) -> None:
+        button.configure(
+            bg=bg,
+            fg=fg,
+            activebackground=active_bg,
+            activeforeground=fg,
+            relief="flat",
+            bd=0,
+            highlightthickness=0,
+            cursor="hand2",
+            takefocus=False,
+        )
+
     def _build_ui(self) -> None:
-        top = tk.Frame(self.root, bg="#0f1115")
-        self.top_frame = top
-        top.pack(fill="x", padx=12, pady=(10, 4))
+        self.shell = self._create_surface(self.root, bg="#0c1628", fill="both", expand=True, padx=10, pady=10)
+
+        header = tk.Frame(self.shell, bg="#0c1628")
+        self.top_frame = header
+        header.pack(fill="x", padx=14, pady=(14, 10))
+
+        header_left = tk.Frame(header, bg="#0c1628")
+        header_left.pack(side="left", fill="x", expand=True)
+
+        tk.Label(
+            header_left,
+            text="Nishizumi Fuel",
+            font=("Segoe UI", 16, "bold"),
+            fg="#f3f7ff",
+            bg="#0c1628",
+        ).pack(anchor="w")
+        tk.Label(
+            header_left,
+            text="Live strategy telemetry overlay",
+            font=("Segoe UI", 9),
+            fg="#7d94b8",
+            bg="#0c1628",
+        ).pack(anchor="w", pady=(2, 0))
+
+        self.header_status = tk.Label(
+            header,
+            text="STANDBY",
+            font=("Segoe UI", 9, "bold"),
+            fg="#9db4d8",
+            bg="#101a2e",
+            padx=12,
+            pady=6,
+        )
+        self.header_status.pack(side="right")
+
+        hero = self._create_surface(self.shell, bg="#101a2e", fill="x", padx=14)
+        hero.pack_configure(pady=(0, 10))
+
+        tk.Label(
+            hero,
+            text="Average consumption",
+            font=("Segoe UI", 10, "bold"),
+            fg="#8ba6c9",
+            bg="#101a2e",
+        ).pack(anchor="w", padx=16, pady=(14, 4))
+
+        hero_value_row = tk.Frame(hero, bg="#101a2e")
+        hero_value_row.pack(fill="x", padx=16, pady=(0, 14))
 
         self.avg_label = tk.Label(
-            top,
+            hero_value_row,
             text="--.-- L/Lap",
-            font=("Segoe UI", 20, "bold"),
+            font=("Segoe UI", 24, "bold"),
             fg="#d8f8d8",
-            bg="#0f1115",
+            bg="#101a2e",
         )
         self.avg_label.pack(side="left")
 
         self.delta_label = tk.Label(
-            top,
+            hero_value_row,
             text="(+0.00)",
-            font=("Segoe UI", 14, "bold"),
+            font=("Segoe UI", 12, "bold"),
             fg="#a0f0a0",
-            bg="#0f1115",
-            padx=8,
+            bg="#16233d",
+            padx=10,
+            pady=6,
         )
-        self.delta_label.pack(side="left")
+        self.delta_label.pack(side="right")
 
-        bottom = tk.Frame(self.root, bg="#0f1115")
-        self.bottom_frame = bottom
-        bottom.pack(fill="x", padx=12, pady=(0, 6))
+        metrics = tk.Frame(self.shell, bg="#0c1628")
+        self.bottom_frame = metrics
+        metrics.pack(fill="x", padx=14, pady=(0, 10))
 
-        self.fuel_label = tk.Label(
-            bottom,
-            text="Fuel: --.-- L",
-            font=("Segoe UI", 12),
-            fg="#f2f2f2",
-            bg="#0f1115",
+        top_metrics = tk.Frame(metrics, bg="#0c1628")
+        top_metrics.pack(fill="x", pady=(0, 8))
+        _, self.fuel_label = self._create_value_card(
+            top_metrics,
+            title="Fuel onboard",
+            value="--.-- L",
+            accent="#f3f7ff",
         )
-        self.fuel_label.pack(anchor="w")
-
-        self.laps_label = tk.Label(
-            bottom,
-            text="Remaining: --.- laps",
-            font=("Segoe UI", 12),
-            fg="#f2f2f2",
-            bg="#0f1115",
+        spacer = tk.Frame(top_metrics, width=8, bg="#0c1628")
+        spacer.pack(side="left")
+        _, self.laps_label = self._create_value_card(
+            top_metrics,
+            title="Laps remaining",
+            value="--.- laps",
+            accent="#69d2ff",
         )
-        self.laps_label.pack(anchor="w")
 
-        self.lastlap_label = tk.Label(
-            bottom,
-            text="Last lap: --.- L",
-            font=("Segoe UI", 12),
-            fg="#f2f2f2",
-            bg="#0f1115",
+        lower_metrics = tk.Frame(metrics, bg="#0c1628")
+        lower_metrics.pack(fill="x")
+        _, self.lastlap_label = self._create_value_card(
+            lower_metrics,
+            title="Last lap burn",
+            value="--.- L",
+            accent="#ffcf69",
         )
-        self.lastlap_label.pack(anchor="w")
-
+        lower_spacer = tk.Frame(lower_metrics, width=8, bg="#0c1628")
+        lower_spacer.pack(side="left")
+        stint_card = self._create_surface(lower_metrics, bg="#101a2e", side="left", fill="both", expand=True)
+        tk.Label(
+            stint_card,
+            text="Stint outlook",
+            font=("Segoe UI", 9, "bold"),
+            fg="#8ba6c9",
+            bg="#101a2e",
+            anchor="w",
+        ).pack(anchor="w", padx=12, pady=(10, 2))
         self.stint_label = tk.Label(
-            bottom,
-            text="Stint: (C) --; (E) --",
-            font=("Segoe UI", 12),
+            stint_card,
+            text="(C) -- • (E) --",
+            font=("Segoe UI", 14, "bold"),
             fg="#d4d4d4",
-            bg="#0f1115",
+            bg="#101a2e",
+            justify="left",
         )
-        self.stint_label.pack(anchor="w")
+        self.stint_label.pack(anchor="w", padx=12, pady=(0, 10))
 
-        controls = tk.Frame(self.root, bg="#0f1115")
+        controls = self._create_surface(self.shell, bg="#101a2e", fill="x", padx=14)
         self.controls_frame = controls
-        controls.pack(fill="x", padx=12, pady=(0, 4))
+        controls.pack_configure(pady=(0, 10))
 
-        button_column = tk.Frame(controls, bg="#0f1115")
-        button_column.pack(side="left", anchor="n", padx=(0, 8))
+        controls_header = tk.Frame(controls, bg="#101a2e")
+        controls_header.pack(fill="x", padx=14, pady=(12, 8))
 
-        button_row = tk.Frame(button_column, bg="#0f1115")
-        button_row.pack(side="top")
+        tk.Label(
+            controls_header,
+            text="Race strategy controls",
+            font=("Segoe UI", 10, "bold"),
+            fg="#f3f7ff",
+            bg="#101a2e",
+        ).pack(side="left")
 
-        tk.Button(
+        button_row = tk.Frame(controls_header, bg="#101a2e")
+        button_row.pack(side="right")
+
+        reset_button = tk.Button(
             button_row,
-            text="R",
+            text="Reset",
             command=self._manual_reset,
-            font=("Segoe UI", 8),
-            bg="#1c2533",
-            fg="#e8e8e8",
-            relief="flat",
-            padx=2,
-            pady=0,
-            width=1,
-        ).pack(side="left", padx=(0, 4))
+            font=("Segoe UI", 9, "bold"),
+            padx=10,
+            pady=6,
+        )
+        self._style_button(reset_button, bg="#1f3354", active_bg="#284267")
+        reset_button.pack(side="left", padx=(0, 6))
 
         self.advanced_toggle_button = tk.Button(
             button_row,
-            textvariable=self.advanced_toggle_text,
+            text="Insights",
             command=self._toggle_advanced_info,
             font=("Segoe UI", 9),
-            bg="#1c2533",
-            fg="#e8e8e8",
-            relief="flat",
-            padx=6,
-            pady=2,
-            takefocus=False,
+            padx=12,
+            pady=6,
         )
+        self._style_button(self.advanced_toggle_button, bg="#1d5eff", active_bg="#4d7fff")
         self.advanced_toggle_button.pack(side="left")
 
-        controls_body = tk.Frame(controls, bg="#0f1115")
-        controls_body.pack(side="left", fill="x", expand=True)
+        controls_body = tk.Frame(controls, bg="#101a2e")
+        controls_body.pack(fill="x", padx=14, pady=(0, 14))
 
         tk.Label(
             controls_body,
-            text="Target L/Lap:",
+            text="Target burn rate",
             font=("Segoe UI", 10),
-            fg="#c4c4c4",
-            bg="#0f1115",
-        ).pack(side="left")
+            fg="#8ba6c9",
+            bg="#101a2e",
+        ).pack(anchor="w")
+
+        entry_row = tk.Frame(controls_body, bg="#101a2e")
+        entry_row.pack(fill="x", pady=(8, 0))
 
         self.target_entry = tk.Entry(
-            controls_body,
+            entry_row,
             textvariable=self.target_var,
-            width=6,
-            font=("Segoe UI", 10),
+            width=8,
+            font=("Segoe UI", 12, "bold"),
             justify="center",
+            bd=0,
+            relief="flat",
+            bg="#16233d",
+            fg="#f3f7ff",
+            insertbackground="#f3f7ff",
         )
-        self.target_entry.pack(side="left", padx=(6, 12))
+        self.target_entry.pack(side="left", ipady=8)
 
-        tk.Checkbutton(
-            controls_body,
-            text="",
+        self.target_units_label = tk.Label(
+            entry_row,
+            text="/Lap",
+            font=("Segoe UI", 10, "bold"),
+            fg="#9db4d8",
+            bg="#101a2e",
+        )
+        self.target_units_label.pack(side="left", padx=(10, 0))
+
+        self.lock_target_check = tk.Checkbutton(
+            entry_row,
+            text="Lock target",
             variable=self.lock_target_var,
             command=self._toggle_target_lock,
-            font=("Segoe UI", 9),
+            font=("Segoe UI", 9, "bold"),
             fg="#c4c4c4",
-            bg="#0f1115",
-            activebackground="#0f1115",
+            bg="#101a2e",
+            activebackground="#101a2e",
             activeforeground="#e8e8e8",
-            selectcolor="#1c2533",
+            selectcolor="#101a2e",
             relief="flat",
-        ).pack(side="left", padx=(0, 10))
+            bd=0,
+            highlightthickness=0,
+            padx=8,
+        )
+        self.lock_target_check.pack(side="right")
 
         self._apply_window_geometry()
 
-        self.advanced_frame = tk.Frame(self.root, bg="#0f1115")
+        self.advanced_frame = self._create_surface(self.shell, bg="#101a2e")
         self.advanced_info_label = tk.Label(
             self.advanced_frame,
             text="",
             font=("Segoe UI", 11),
             fg="#d4d4d4",
-            bg="#0f1115",
+            bg="#101a2e",
             justify="left",
-            wraplength=320,
+            wraplength=360,
         )
-        self.advanced_info_label.pack(anchor="w", pady=(0, 2))
-        advanced_buttons = tk.Frame(self.advanced_frame, bg="#0f1115")
-        advanced_buttons.pack(fill="x")
+        tk.Label(
+            self.advanced_frame,
+            text="Adaptive stint suggestions",
+            font=("Segoe UI", 10, "bold"),
+            fg="#f3f7ff",
+            bg="#101a2e",
+        ).pack(anchor="w", padx=14, pady=(12, 6))
+        self.advanced_info_label.pack(anchor="w", padx=14, pady=(0, 8))
+        advanced_buttons = tk.Frame(self.advanced_frame, bg="#101a2e")
+        advanced_buttons.pack(fill="x", padx=14)
 
         self.plus_one_button = tk.Button(
             advanced_buttons,
             text="+1 lap",
             command=lambda: self._apply_advanced_target("plus"),
             font=("Segoe UI", 11, "bold"),
-            bg="#1c2533",
-            fg="#e8e8e8",
-            relief="flat",
             padx=14,
-            pady=4,
+            pady=8,
         )
+        self._style_button(self.plus_one_button, bg="#0f8f63", active_bg="#12ad77")
         self.plus_one_button.pack(side="left", padx=(0, 12))
 
         self.minus_one_button = tk.Button(
@@ -262,12 +408,10 @@ class FuelConsumptionMonitor:
             text="-1lap",
             command=lambda: self._apply_advanced_target("minus"),
             font=("Segoe UI", 11, "bold"),
-            bg="#1c2533",
-            fg="#e8e8e8",
-            relief="flat",
             padx=14,
-            pady=4,
+            pady=8,
         )
+        self._style_button(self.minus_one_button, bg="#8c3dff", active_bg="#a666ff")
         self.minus_one_button.pack(side="left")
 
         self.advanced_stint_label = tk.Label(
@@ -275,30 +419,30 @@ class FuelConsumptionMonitor:
             text="",
             font=("Segoe UI", 9, "bold"),
             fg="#d4d4d4",
-            bg="#0f1115",
+            bg="#101a2e",
             justify="left",
         )
-        self.advanced_stint_label.pack(anchor="w", pady=(2, 0))
+        self.advanced_stint_label.pack(anchor="w", padx=14, pady=(8, 12))
 
         self.status_label = tk.Label(
-            self.root,
+            self.shell,
             text="Waiting for iRacing...",
             font=("Segoe UI", 9),
             fg="#8c8c8c",
-            bg="#0f1115",
+            bg="#0c1628",
         )
-        self.status_label.pack(anchor="w", padx=12, pady=(0, 6))
+        self.status_label.pack(anchor="w", padx=16, pady=(0, 12))
 
-        self.pit_overlay_frame = tk.Frame(self.root, bg="#0f1115")
+        self.pit_overlay_frame = self._create_surface(self.shell, bg="#101a2e")
         self.pit_overlay_label = tk.Label(
             self.pit_overlay_frame,
             text="Stint avg\n--.-- L/Lap",
-            font=("Segoe UI", 20, "bold"),
+            font=("Segoe UI", 22, "bold"),
             fg="#6fe38f",
-            bg="#0f1115",
+            bg="#101a2e",
             justify="center",
         )
-        self.pit_overlay_label.pack(expand=True, fill="both", padx=12, pady=16)
+        self.pit_overlay_label.pack(expand=True, fill="both", padx=12, pady=24)
 
     def _set_display_units(self, display_units: Optional[int]) -> None:
         if display_units not in (0, 1):
@@ -331,11 +475,13 @@ class FuelConsumptionMonitor:
         unit = self._unit_label
         self.avg_label.config(text=f"--.-- {unit}/Lap", fg="#c8c8c8")
         self.delta_label.config(text="(--)", fg="#c8c8c8")
-        self.fuel_label.config(text=f"Fuel: --.-- {unit}")
-        self.laps_label.config(text="Remaining: --.- laps")
-        self.lastlap_label.config(text=f"Last lap: --.- {unit}")
-        self.stint_label.config(text="Stint: (C) --; (E) --", fg="#d4d4d4")
+        self.fuel_label.config(text=f"--.-- {unit}")
+        self.laps_label.config(text="--.- laps")
+        self.lastlap_label.config(text=f"--.- {unit}")
+        self.stint_label.config(text="(C) -- • (E) --", fg="#d4d4d4")
         self.status_label.config(text=status_text)
+        self.header_status.config(text="STANDBY", fg="#9db4d8")
+        self.target_units_label.config(text=f"{unit}/Lap")
         self._hide_pit_overlay()
 
     def _set_connection_state(self, connected: bool) -> None:
@@ -385,6 +531,7 @@ class FuelConsumptionMonitor:
     def _manual_reset(self) -> None:
         self._reset_stint()
         self.status_label.config(text="Manual reset")
+        self.header_status.config(text="RESET", fg="#ffcf69")
 
     def _reset_stint(self) -> None:
         self._stint = None
@@ -474,12 +621,14 @@ class FuelConsumptionMonitor:
                 self._locked_target = target
                 self.target_entry.configure(state="disabled")
                 self.status_label.config(text="Target locked")
+                self.header_status.config(text="LOCKED", fg="#69d2ff")
             else:
                 self.lock_target_var.set(False)
         else:
             self._locked_target = None
             self.target_entry.configure(state="normal")
             self.status_label.config(text="Target unlocked")
+            self.header_status.config(text="LIVE", fg="#6fe38f")
 
     def _toggle_advanced_info(self) -> None:
         show_advanced = not self.show_advanced_var.get()
@@ -490,7 +639,9 @@ class FuelConsumptionMonitor:
         else:
             self.advanced_frame.pack_forget()
             self._apply_window_geometry()
-        self.advanced_toggle_text.set("I")
+        self.advanced_toggle_button.config(
+            text="Hide insights" if show_advanced else "Insights"
+        )
 
     def _apply_advanced_target(self, mode: str) -> None:
         if mode == "plus":
@@ -558,17 +709,18 @@ class FuelConsumptionMonitor:
             ):
                 frame.pack_forget()
             self.pit_overlay_frame.pack(expand=True, fill="both")
+        self.header_status.config(text="PIT", fg="#ffcf69")
 
     def _hide_pit_overlay(self) -> None:
         if not self.pit_overlay_frame.winfo_ismapped():
             return
         self.pit_overlay_frame.pack_forget()
-        self.top_frame.pack(fill="x", padx=12, pady=(10, 4))
-        self.bottom_frame.pack(fill="x", padx=12, pady=(0, 6))
-        self.controls_frame.pack(fill="x", padx=12, pady=(0, 4))
+        self.top_frame.pack(fill="x", padx=14, pady=(14, 10))
+        self.bottom_frame.pack(fill="x", padx=14, pady=(0, 10))
+        self.controls_frame.pack(fill="x", padx=14, pady=(0, 10))
         if self.show_advanced_var.get():
-            self.advanced_frame.pack(fill="x", padx=12, pady=(0, 4))
-        self.status_label.pack(anchor="w", padx=12, pady=(0, 6))
+            self.advanced_frame.pack(fill="x", padx=14, pady=(0, 10))
+        self.status_label.pack(anchor="w", padx=16, pady=(0, 12))
 
     def _update_loop(self) -> None:
         if not getattr(self.ir, "is_initialized", False):
@@ -579,6 +731,7 @@ class FuelConsumptionMonitor:
         self._set_connection_state(True)
 
         self._set_display_units(self._safe_int("DisplayUnits"))
+        self.target_units_label.config(text=f"{self._unit_label}/Lap")
         fuel_level = self._safe_float("FuelLevel")
         lapdist = self._safe_float("LapDistPct")
         lap = self._safe_int("Lap")
@@ -610,7 +763,7 @@ class FuelConsumptionMonitor:
                 text=f"--.-- {self._unit_label}/Lap",
                 fg="#c8c8c8",
             )
-            self.delta_label.config(text="(--)", fg="#c8c8c8")
+            self.delta_label.config(text="(--)", fg="#c8c8c8", bg="#16233d")
         else:
             display_avg = self._from_liters(avg_per_lap)
             display_target = self._from_liters(target) if target is not None else None
@@ -618,26 +771,25 @@ class FuelConsumptionMonitor:
             within_target = target is not None and avg_per_lap <= target
             avg_color = "#6fe38f" if within_target else "#ff6b6b"
             delta_color = avg_color
+            delta_bg = "#123126" if within_target else "#3a1f2d"
             self.avg_label.config(
                 text=f"{display_avg:.2f} {self._unit_label}/Lap",
                 fg=avg_color,
             )
             if delta is None:
-                self.delta_label.config(text="(--) ", fg="#c8c8c8")
+                self.delta_label.config(text="(--)", fg="#c8c8c8", bg="#16233d")
             else:
-                self.delta_label.config(text=f"({delta:+.2f})", fg=delta_color)
+                self.delta_label.config(text=f"{delta:+.2f}", fg=delta_color, bg=delta_bg)
 
-        self.fuel_label.config(
-            text=f"Fuel: {self._from_liters(fuel_level):.2f} {self._unit_label}"
-        )
+        self.fuel_label.config(text=f"{self._from_liters(fuel_level):.2f} {self._unit_label}")
 
         if avg_per_lap and avg_per_lap > 0:
             remaining = fuel_level / avg_per_lap
-            self.laps_label.config(text=f"Remaining: {remaining:.1f} laps")
+            self.laps_label.config(text=f"{remaining:.1f} laps")
         else:
-            self.laps_label.config(text="Remaining: --.- laps")
+            self.laps_label.config(text="--.- laps")
 
-        stint_text = "Stint: (C) --; (E) --"
+        stint_text = "(C) -- • (E) --"
         stint_color = "#d4d4d4"
         planned_laps = None
         base_laps = None
@@ -654,9 +806,9 @@ class FuelConsumptionMonitor:
                 else:
                     stint_color = "#6fe38f"
             if planned_laps is None:
-                stint_text = f"Stint: (C) --; (E) {base_laps}"
+                stint_text = f"(C) -- • (E) {base_laps}"
             else:
-                stint_text = f"Stint: (C) {planned_laps}; (E) {base_laps}"
+                stint_text = f"(C) {planned_laps} • (E) {base_laps}"
 
         self.stint_label.config(text=stint_text, fg=stint_color)
 
@@ -719,10 +871,10 @@ class FuelConsumptionMonitor:
 
         if self._last_lap_used is not None:
             self.lastlap_label.config(
-                text=f"Last lap: {self._from_liters(self._last_lap_used):.2f} {self._unit_label}"
+                text=f"{self._from_liters(self._last_lap_used):.2f} {self._unit_label}"
             )
         else:
-            self.lastlap_label.config(text=f"Last lap: --.- {self._unit_label}")
+            self.lastlap_label.config(text=f"--.- {self._unit_label}")
 
         now = time.time()
         if on_pit_road and not self._last_on_pitroad:
@@ -733,8 +885,13 @@ class FuelConsumptionMonitor:
 
         if now < self._pit_hold_until:
             self.status_label.config(text="PIT")
+            self.header_status.config(text="PIT", fg="#ffcf69")
         elif self._stint is not None:
             self.status_label.config(text="Stint tracking")
+            self.header_status.config(
+                text="LOCKED" if self.lock_target_var.get() else "LIVE",
+                fg="#69d2ff" if self.lock_target_var.get() else "#6fe38f",
+            )
 
         if now < self._pit_overlay_until:
             self._show_pit_overlay(self._pit_overlay_value)
