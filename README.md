@@ -63,18 +63,18 @@ This means you can close and reopen the apps without losing everything every tim
 
 ## Included apps
 
-## 1) Nishizumi Fuel
+## 1) Nishizumi FuelMonitor
 
-**File:** `Nishizumi_Fuel.py`
+**File:** `Nishizumi_FuelMonitor.py`
 
 **Run:**
 ```bash
-python Nishizumi_Fuel.py
+python Nishizumi_FuelMonitor.py
 ```
 
 ### What it does
 
-Nishizumi Fuel is a small always-on-top overlay that watches your live fuel use and turns it into simple race information:
+Nishizumi FuelMonitor is a small always-on-top overlay that watches your live fuel use and turns it into simple race information:
 
 - current average **fuel per lap**
 - difference versus your manual target
@@ -149,18 +149,18 @@ Use Fuel during races where you need a quick answer to:
 
 ---
 
-## 2) Nishizumi PitTime
+## 2) Nishizumi Pittime
 
-**File:** `Nishizumi_PitTime.py`
+**File:** `Nishizumi_Pittime.py`
 
 **Run:**
 ```bash
-python Nishizumi_PitTime.py
+python Nishizumi_Pittime.py
 ```
 
 ### What it does
 
-Nishizumi PitTime estimates two things in real time:
+Nishizumi Pittime estimates two things in real time:
 
 1. **How much total time your next pit stop will cost**.
 2. **How safe your rejoin will be relative to traffic around you**.
@@ -243,14 +243,12 @@ This is especially helpful if you run the same combo across multiple sessions or
 
 ## 3) Nishizumi TireWear
 
-**File:** `Nishizumi_TireWear (2).py`
+**File:** `Nishizumi_TireWear.py`
 
 **Run:**
 ```bash
-python "Nishizumi_TireWear (2).py"
+python "Nishizumi_TireWear.py"
 ```
-
-> Note: the repository currently contains the TireWear app under the filename `Nishizumi_TireWear (2).py`, so the command above needs quotes in most shells.
 
 ### What it does
 
@@ -529,9 +527,9 @@ Make sure you have:
 Current top-level files in this repo:
 
 - `README.md`
-- `Nishizumi_Fuel.py`
-- `Nishizumi_PitTime.py`
-- `Nishizumi_TireWear (2).py`
+- `Nishizumi_FuelMonitor.py`
+- `Nishizumi_Pittime.py`
+- `Nishizumi_TireWear.py`
 - `Nishizumi_Traction.py`
 
 ---
