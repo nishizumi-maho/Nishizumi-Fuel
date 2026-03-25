@@ -6,6 +6,7 @@ Nishizumi Tools is a collection of standalone iRacing helper overlays written in
 - **Nishizumi PitTime** estimates your total pit loss and whether you will rejoin traffic safely.
 - **Nishizumi TireWear** learns tire degradation for the current car/track combination over time.
 - **Nishizumi Traction** shows how much grip you are using and points out where you are leaving time on the table.
+- **Nishizumi PitServiceOverlay** tracks pit-in/pit-out time and helps plan fuel vs tire service overlap.
 
 The goal of this README is to explain the apps in plain language so a new user can install them, launch them, and understand what they are looking at without extra guidance.
 
@@ -56,6 +57,38 @@ Files currently used by this repo include:
 This means you can close and reopen the apps without losing everything each time.
 
 ## Included apps
+
+## 0) Nishizumi PitServiceOverlay
+
+**File:** `apps/Nishizumi_PitServiceOverlay.py`
+
+Run:
+
+```bash
+python apps/Nishizumi_PitServiceOverlay.py
+```
+
+### What it does
+
+This overlay was built for a straightforward pit-box workflow:
+
+- detects when you enter pit road and starts a timer
+- detects when you leave pit road and stores the full box time
+- learns/updates fuel rate in liters per second while refueling
+- compares fuel-service duration versus tire-service duration
+- shows if fueling will finish before tires (or vice versa)
+- calculates the minimum liters to add so fueling lasts at least as long as tire service
+- solves “how many liters for X seconds of pit time” using your measured fuel rate
+
+### Typical usage example
+
+If your stop added 100 L with a 120 L tank and the app learned `Y L/s`, you can:
+
+1. set tank total and current fuel
+2. type a desired fuel amount (for example 100 L) to see expected fuel time and total service time
+3. set a target pit-box time and instantly get the liters estimate for that target
+
+This makes it easier to avoid unnecessary waiting after service and to compare how pit time changes as fuel quantity changes.
 
 ## 1) Nishizumi FuelMonitor
 
