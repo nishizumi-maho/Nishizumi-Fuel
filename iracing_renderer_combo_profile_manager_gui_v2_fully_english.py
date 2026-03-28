@@ -9,7 +9,7 @@ import threading
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import irsdk
 import psutil
@@ -725,9 +725,15 @@ class IRacingRuntime:
 # MONITOR THREAD
 # ============================================================
 class MonitorService:
-    def __init__(self, manager: ProfileManager, log_func) -> None:
+    def __init__(
+        self,
+        manager: ProfileManager,
+        log_func,
+        on_session_closed: Callable[[], None] | None = None,
+    ) -> None:
         self.manager = manager
         self.log_func = log_func
+        self.on_session_closed = on_session_closed
         self.runtime = IRacingRuntime()
         self.stop_event = threading.Event()
         self.thread: threading.Thread | None = None
@@ -861,6 +867,8 @@ class MonitorService:
 
                 self.session = None
                 self.runtime.reset()
+                if self.on_session_closed is not None:
+                    self.on_session_closed()
 
             self.last_sim_running = sim_running
             time.sleep(POLL_INTERVAL)
@@ -923,13 +931,18 @@ class App(QMainWindow):
         self.manager = ProfileManager()
         self.log_queue: list[str] = []
         self.log_lock = threading.Lock()
+        self.refresh_requested = threading.Event()
 
         self.selected_combo_key: str | None = None
 
         self._build_ui()
         self._run_first_time_setup_if_needed()
 
-        self.monitor = MonitorService(self.manager, self.enqueue_log)
+        self.monitor = MonitorService(
+            self.manager,
+            self.enqueue_log,
+            on_session_closed=self.request_refresh_after_sim_close,
+        )
         self.monitor.start()
 
         self.refresh_all()
@@ -943,6 +956,9 @@ class App(QMainWindow):
         with self.log_lock:
             self.log_queue.append(text)
 
+    def request_refresh_after_sim_close(self) -> None:
+        self.refresh_requested.set()
+
     def _drain_log_queue(self) -> None:
         with self.log_lock:
             items = self.log_queue[:]
@@ -954,6 +970,10 @@ class App(QMainWindow):
         self.log_text.moveCursor(QTextCursor.MoveOperation.End)
         for item in items:
             self.log_text.append(item)
+
+        if self.refresh_requested.is_set():
+            self.refresh_requested.clear()
+            self.refresh_all()
 
     def renderer_to_label(self, renderer_file: str) -> str:
         for label, file_name in RENDERER_OPTIONS.items():
