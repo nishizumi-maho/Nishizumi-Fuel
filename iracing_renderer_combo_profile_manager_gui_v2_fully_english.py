@@ -35,11 +35,11 @@ RENDERER_OPTIONS = {
 }
 
 GROUPING_OPTIONS = {
-    "Carro + pista": "car_track",
-    "Carro": "car",
-    "Pista": "track",
+    "Car + track": "car_track",
+    "Car": "car",
+    "Track": "track",
     "SeriesID": "series",
-    "SeriesID + pista": "series_track",
+    "SeriesID + track": "series_track",
 }
 
 SIM_PROCESS_NAMES = {
@@ -280,7 +280,7 @@ class ProfileManager:
 
     def set_selected_renderer(self, renderer_file: str) -> None:
         if renderer_file not in RENDERER_OPTIONS.values():
-            raise ValueError(f"Renderer inválido: {renderer_file}")
+            raise ValueError(f"Invalid renderer: {renderer_file}")
         with self.lock:
             self.settings["default_renderer"] = renderer_file
             self.save_settings()
@@ -296,7 +296,7 @@ class ProfileManager:
 
     def set_selected_grouping(self, grouping_mode: str) -> None:
         if grouping_mode not in GROUPING_OPTIONS.values():
-            raise ValueError(f"Agrupamento inválido: {grouping_mode}")
+            raise ValueError(f"Invalid grouping mode: {grouping_mode}")
         with self.lock:
             self.settings["default_grouping"] = grouping_mode
             self.save_settings()
@@ -372,7 +372,7 @@ class ProfileManager:
         active_ini = self.get_active_ini(renderer_file)
         backup_path = self.get_global_backup_path(renderer_file)
         if not active_ini.exists():
-            raise FileNotFoundError(f"Arquivo ativo não encontrado: {active_ini}")
+            raise FileNotFoundError(f"Active file not found: {active_ini}")
         shutil.copy2(active_ini, backup_path)
         self.save_manifest()
 
@@ -381,9 +381,9 @@ class ProfileManager:
         active_ini = self.get_active_ini(renderer_file)
         backup_path = self.get_global_backup_path(renderer_file)
         if not backup_path.exists():
-            raise FileNotFoundError(f"Backup global não encontrado: {backup_path}")
+            raise FileNotFoundError(f"Global backup not found: {backup_path}")
         if not active_ini.exists():
-            raise FileNotFoundError(f"Arquivo ativo não encontrado: {active_ini}")
+            raise FileNotFoundError(f"Active file not found: {active_ini}")
         shutil.copy2(backup_path, active_ini)
 
     def get_profile_ini_path(self, combo: ComboInfo, renderer_file: str | None = None, grouping_mode: str | None = None) -> Path:
@@ -499,7 +499,7 @@ class ProfileManager:
         grouping_mode = grouping_mode or self.get_selected_grouping()
         entry = self.get_entry(combo_key, renderer_file, grouping_mode)
         if not entry:
-            raise KeyError(f"Combo não encontrado: {combo_key}")
+            raise KeyError(f"Combo not found: {combo_key}")
         entry["enabled"] = bool(enabled)
         entry["autosave_on_manual_close"] = bool(autosave)
         self.save_manifest()
@@ -511,7 +511,7 @@ class ProfileManager:
         active_ini = self.get_active_ini(renderer_file)
 
         if not active_ini.exists():
-            raise FileNotFoundError(f"Arquivo ativo não encontrado: {active_ini}")
+            raise FileNotFoundError(f"Active file not found: {active_ini}")
 
         entry = self.register_combo(combo, renderer_file, grouping_mode)
         ini_path = self.get_profile_ini_path(combo, renderer_file, grouping_mode)
@@ -528,15 +528,15 @@ class ProfileManager:
         grouping_mode = grouping_mode or self.get_selected_grouping()
         entry = self.get_entry(combo_key, renderer_file, grouping_mode)
         if not entry:
-            raise KeyError(f"Combo não encontrado: {combo_key}")
+            raise KeyError(f"Combo not found: {combo_key}")
 
         ini_path = Path(str(entry.get("profile_ini") or ""))
         active_ini = self.get_active_ini(renderer_file)
 
         if not ini_path.exists():
-            raise FileNotFoundError(f"Profile não encontrado: {ini_path}")
+            raise FileNotFoundError(f"Profile not found: {ini_path}")
         if not active_ini.exists():
-            raise FileNotFoundError(f"Arquivo ativo não encontrado: {active_ini}")
+            raise FileNotFoundError(f"Active file not found: {active_ini}")
 
         shutil.copy2(ini_path, active_ini)
         entry["last_used_at"] = now_str()
@@ -732,7 +732,7 @@ class MonitorService:
 
     def _run(self) -> None:
         self.log(
-            "Monitor automático iniciado | "
+            "Automatic monitor started | "
             f"renderer: {self.manager.get_selected_renderer()} | "
             f"grouping: {self.manager.get_selected_grouping()}"
         )
@@ -766,7 +766,7 @@ class MonitorService:
                             "profile_apply_pending": False,
                         }
                         self.log(
-                            f"Combo detectado: {combo.label()} | "
+                            f"Combo detected: {combo.label()} | "
                             f"renderer in app: {renderer_file} | grouping: {grouping_mode}"
                         )
 
@@ -775,12 +775,12 @@ class MonitorService:
 
                         if profile_exists and enabled:
                             if self.manager.active_ini_matches_profile(combo_key, renderer_file, grouping_mode):
-                                self.log("Profile conhecido já está ativo")
+                                self.log("Known profile is already active")
                             else:
                                 self.session["close_scheduled_at"] = time.time() + PRE_CLOSE_DELAY
                                 self.log(
-                                    f"Profile conhecido mas diferente do ativo ({active_ini.name}). "
-                                    f"WM_CLOSE agendado para {PRE_CLOSE_DELAY:.0f}s"
+                                    f"Known profile is different from the active file ({active_ini.name}). "
+                                    f"WM_CLOSE scheduled for {PRE_CLOSE_DELAY:.0f}s"
                                 )
                         else:
                             self.log("First time for this grouping, or the profile is disabled. No automatic close will be performed")
@@ -794,7 +794,7 @@ class MonitorService:
                             if sent > 0:
                                 self.session["wm_close_sent"] = True
                                 self.session["profile_apply_pending"] = True
-                                self.log(f"WM_CLOSE enviado para {sent} janela(s) do sim")
+                                self.log(f"WM_CLOSE sent to {sent} sim window(s)")
                             else:
                                 self.log("No sim windows were found for WM_CLOSE")
                                 self.session["close_scheduled_at"] = None
@@ -824,7 +824,7 @@ class MonitorService:
                     if bool(self.session.get("profile_apply_pending")):
                         try:
                             self.manager.apply_profile_to_active_ini(session_combo_key, session_renderer, session_grouping)
-                            self.log("Profile correto aplicado no INI ativo. Reabra o sim manualmente quando quiser")
+                            self.log("Correct profile applied to the active INI. Reopen the sim manually whenever you want")
                         except Exception as e:
                             self.log(f"Error applying known profile: {e}")
                     else:
@@ -845,7 +845,7 @@ class MonitorService:
             self.last_sim_running = sim_running
             time.sleep(POLL_INTERVAL)
 
-        self.log("Monitor automático encerrado")
+        self.log("Automatic monitor stopped")
 
 
 # ============================================================
@@ -868,7 +868,7 @@ class FirstRunDialog(tk.Toplevel):
 
         ttk.Label(
             frame,
-            text="Escolha o renderer padrão e o modo de agrupamento dos profiles.\nVocê poderá mudar isso depois no app.",
+            text="Choose the default renderer and profile grouping mode.\nYou can change this later in the app.",
             justify="left",
         ).pack(anchor="w", pady=(0, 12))
 
@@ -982,7 +982,7 @@ class App(tk.Tk):
         for label, mode in GROUPING_OPTIONS.items():
             if mode == grouping_mode:
                 return label
-        return "Carro + pista"
+        return "Car + track"
 
     def label_to_grouping(self, label: str) -> str:
         return GROUPING_OPTIONS.get(label, self.manager.get_selected_grouping())
@@ -1001,11 +1001,11 @@ class App(tk.Tk):
         dialog = FirstRunDialog(
             self,
             default_renderer_label="OpenXR",
-            default_grouping_label="Carro + pista",
+            default_grouping_label="Car + track",
         )
         self.wait_window(dialog)
 
-        renderer_label, grouping_label = dialog.result or ("OpenXR", "Carro + pista")
+        renderer_label, grouping_label = dialog.result or ("OpenXR", "Car + track")
         renderer_file = self.label_to_renderer(renderer_label)
         grouping_mode = self.label_to_grouping(grouping_label)
 
@@ -1016,7 +1016,7 @@ class App(tk.Tk):
         self.grouping_ui_var.set(grouping_label)
 
         self.enqueue_log(
-            f"[{now_str()}] First-time setup salva | "
+            f"[{now_str()}] First-time setup saved | "
             f"renderer: {renderer_file} | grouping: {grouping_mode}"
         )
 
@@ -1024,7 +1024,7 @@ class App(tk.Tk):
         root = ttk.Frame(self, padding=10)
         root.pack(fill="both", expand=True)
 
-        top = ttk.LabelFrame(root, text="Configuração do app", padding=10)
+        top = ttk.LabelFrame(root, text="App configuration", padding=10)
         top.pack(fill="x")
 
         row0 = ttk.Frame(top)
@@ -1153,8 +1153,8 @@ class App(tk.Tk):
         profiles_dir = self.manager.get_grouping_dir(renderer_file, grouping_mode)
         backup = self.manager.get_global_backup_path(renderer_file)
 
-        self.renderer_label_var.set(f"Arquivo selecionado: {renderer_file}")
-        self.grouping_label_var.set(f"Agrupamento selecionado: {grouping_mode}")
+        self.renderer_label_var.set(f"Selected file: {renderer_file}")
+        self.grouping_label_var.set(f"Selected grouping: {grouping_mode}")
         self.paths_label.config(
             text=(
                 f"Active INI: {active_ini}\n"
@@ -1244,14 +1244,14 @@ class App(tk.Tk):
         self.manager.set_selected_renderer(renderer_file)
         self.selected_combo_key = None
         self.refresh_all()
-        self.set_status(f"Default renderer alterado para {renderer_file}")
+        self.set_status(f"Default renderer changed to {renderer_file}")
 
     def on_grouping_changed(self, _event: object) -> None:
         grouping_mode = self.current_grouping_mode()
         self.manager.set_selected_grouping(grouping_mode)
         self.selected_combo_key = None
         self.refresh_all()
-        self.set_status(f"Default grouping alterado para {grouping_mode}")
+        self.set_status(f"Default grouping changed to {grouping_mode}")
 
     def on_tree_select(self, _event: object) -> None:
         selected = self.tree.selection()
@@ -1275,15 +1275,15 @@ class App(tk.Tk):
         runtime = IRacingRuntime()
         try:
             if not runtime.is_sim_running():
-                messagebox.showinfo("Info", "O sim não está rodando agora.")
+                messagebox.showinfo("Info", "The sim is not running right now.")
                 return
             runtime.ensure_started()
             if not runtime.is_connected():
-                messagebox.showinfo("Info", "SDK ainda não está conectada ao sim.")
+                messagebox.showinfo("Info", "The SDK is not connected to the sim yet.")
                 return
             combo = runtime.detect_combo()
             if combo is None:
-                messagebox.showinfo("Info", "Não foi possível detectar um combo completo agora.")
+                messagebox.showinfo("Info", "Could not detect a complete combo right now.")
                 return
             entry = self.manager.register_combo(combo, self.current_renderer_file(), self.current_grouping_mode())
             self.fill_form(
@@ -1300,7 +1300,7 @@ class App(tk.Tk):
     def save_profile_from_active_ini(self) -> None:
         combo = self.combo_from_form()
         if not combo.is_complete():
-            messagebox.showerror("Erro", "Fill in at least the fields relevant to the selected grouping.")
+            messagebox.showerror("Error", "Fill in at least the fields relevant to the selected grouping.")
             return
 
         try:
@@ -1311,21 +1311,21 @@ class App(tk.Tk):
             self.refresh_all()
             self.set_status(f"Profile saved: {Path(str(entry['profile_ini'])).name}")
         except Exception as e:
-            messagebox.showerror("Erro", str(e))
+            messagebox.showerror("Error", str(e))
 
     def apply_selected_profile(self) -> None:
         combo = self.combo_from_form()
         if not combo.is_complete():
-            messagebox.showerror("Erro", "Select or fill in a valid combo.")
+            messagebox.showerror("Error", "Select or fill in a valid combo.")
             return
 
         runtime = IRacingRuntime()
         try:
             if runtime.is_sim_running():
                 messagebox.showwarning(
-                    "Sim aberto",
-                    "Feche o sim antes de aplicar manualmente um profile ao INI ativo.\n"
-                    "O monitor automático já cuida disso quando detectar mismatch.",
+                    "Sim open",
+                    "Close the sim before manually applying a profile to the active INI.\n"
+                    "The automatic monitor already handles this when it detects a mismatch.",
                 )
                 return
         finally:
@@ -1333,14 +1333,14 @@ class App(tk.Tk):
 
         try:
             self.manager.apply_profile_to_active_ini(combo.combo_key(self.current_grouping_mode()), self.current_renderer_file(), self.current_grouping_mode())
-            self.set_status(f"Profile aplicado manualmente ao INI ativo ({self.current_renderer_file()})")
+            self.set_status(f"Profile manually applied to the active INI ({self.current_renderer_file()})")
         except Exception as e:
-            messagebox.showerror("Erro", str(e))
+            messagebox.showerror("Error", str(e))
 
     def save_entry_options(self) -> None:
         combo = self.combo_from_form()
         if not combo.is_complete():
-            messagebox.showerror("Erro", "Select or fill in a valid combo first.")
+            messagebox.showerror("Error", "Select or fill in a valid combo first.")
             return
 
         try:
@@ -1354,39 +1354,39 @@ class App(tk.Tk):
             )
             self.selected_combo_key = combo.combo_key(self.current_grouping_mode())
             self.refresh_all()
-            self.set_status("Flags de enabled/autosave salvas")
+            self.set_status("Enabled/autosave flags saved")
         except Exception as e:
-            messagebox.showerror("Erro", str(e))
+            messagebox.showerror("Error", str(e))
 
     def create_global_backup(self) -> None:
         runtime = IRacingRuntime()
         try:
             if runtime.is_sim_running():
-                messagebox.showwarning("Sim aberto", "Feche o sim antes de atualizar o backup global.")
+                messagebox.showwarning("Sim open", "Close the sim before updating the global backup.")
                 return
         finally:
             runtime.reset()
 
         try:
             self.manager.create_or_refresh_global_backup(self.current_renderer_file())
-            self.set_status(f"Backup global criado/atualizado para {self.current_renderer_file()}")
+            self.set_status(f"Global backup created/updated for {self.current_renderer_file()}")
         except Exception as e:
-            messagebox.showerror("Erro", str(e))
+            messagebox.showerror("Error", str(e))
 
     def restore_global_backup(self) -> None:
         runtime = IRacingRuntime()
         try:
             if runtime.is_sim_running():
-                messagebox.showwarning("Sim aberto", "Feche o sim antes de restaurar o backup global.")
+                messagebox.showwarning("Sim open", "Close the sim before restoring the global backup.")
                 return
         finally:
             runtime.reset()
 
         try:
             self.manager.restore_global_backup(self.current_renderer_file())
-            self.set_status(f"Backup global restaurado no INI ativo ({self.current_renderer_file()})")
+            self.set_status(f"Global backup restored to the active INI ({self.current_renderer_file()})")
         except Exception as e:
-            messagebox.showerror("Erro", str(e))
+            messagebox.showerror("Error", str(e))
 
     def open_profiles_folder(self) -> None:
         try:
@@ -1396,7 +1396,7 @@ class App(tk.Tk):
             os.startfile(path)  # type: ignore[attr-defined]
             self.set_status("Profiles folder opened")
         except Exception as e:
-            messagebox.showerror("Erro", str(e))
+            messagebox.showerror("Error", str(e))
 
     def on_close(self) -> None:
         try:
