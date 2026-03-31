@@ -2,6 +2,9 @@
 
 ➡️ **Latest Release:** [Get the newest release package](https://github.com/nishizumi-maho/Nishizumi-Tools/releases)
 
+<img width="512" height="512" alt="ChatGPT Image Mar 31, 2026, 06_17_31 AM" src="https://github.com/user-attachments/assets/65e9bf59-1160-4f6d-a197-7c783e845013" />
+
+
 Nishizumi Tools is a collection of standalone iRacing helper overlays written in Python. Each app focuses on one race-day task:
 
 - **Nishizumi FuelMonitor**: fuel usage tracking, stint projection, and target delta.
