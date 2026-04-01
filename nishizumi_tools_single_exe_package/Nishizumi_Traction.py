@@ -34,6 +34,7 @@ RECENT_VALID_LAPS = 5
 TOGGLE_MODE_KEY = "m"
 DEFAULT_LAPS_FOR_FEEDBACK = 5
 TOGGLE_CIRCLE_KEY = "o"
+TOGGLE_LAPDIST_KEY = "l"
 
 BG = "#0b0f14"
 PANEL = "#111821"
@@ -143,7 +144,9 @@ class TractionCircleOverlay:
         self.reference_var = tk.StringVar(value="Adaptive live reference")
         self.headline_var = tk.StringVar(value="Waiting for telemetry...")
         self.subheadline_var = tk.StringVar(value="Open iRacing and click Drive.")
-        self.footer_var = tk.StringVar(value="M: compact/detailed  •  V: minimal view  •  O: pop-out circle  •  S: setup panel")
+        self.footer_var = tk.StringVar(
+            value="M: compact/detailed  •  V: minimal view  •  O: pop-out circle  •  L: LapDist overlay  •  S: setup panel"
+        )
         self.settings_hint_var = tk.StringVar(value="Coaching starts after 5 clean laps.")
 
         self.current_lap_num: Optional[int] = None
@@ -171,6 +174,10 @@ class TractionCircleOverlay:
         self.circle_window: Optional[tk.Toplevel] = None
         self.circle_canvas: Optional[tk.Canvas] = None
         self.circle_caption_var = tk.StringVar(value="Usage --")
+        self.lapdist_window: Optional[tk.Toplevel] = None
+        self.lapdist_var = tk.StringVar(value="LapDist: --")
+        self._lapdist_drag_offset_x = 0
+        self._lapdist_drag_offset_y = 0
 
         self._drag_start: Optional[Tuple[int, int]] = None
 
@@ -270,6 +277,8 @@ class TractionCircleOverlay:
         self.btn_mode.pack(side="left", padx=(8, 0))
         self.btn_circle = ttk.Button(toolbar, text="Pop-out circle (O)", command=self._toggle_circle_popout)
         self.btn_circle.pack(side="left", padx=(8, 0))
+        self.btn_lapdist = ttk.Button(toolbar, text="LapDist overlay (L)", command=self._toggle_lapdist_overlay)
+        self.btn_lapdist.pack(side="left", padx=(8, 0))
         self.btn_sidebar = ttk.Button(toolbar, text="Setup panel (S)", command=self._toggle_sidebar)
         self.btn_sidebar.pack(side="left", padx=(8, 0))
         ttk.Button(toolbar, text="Load IBT", command=self._load_ibt_reference).pack(side="right")
@@ -391,6 +400,8 @@ class TractionCircleOverlay:
             self.root.bind(f"<{key}>", self._toggle_sidebar)
         for key in (TOGGLE_CIRCLE_KEY, TOGGLE_CIRCLE_KEY.upper()):
             self.root.bind(f"<{key}>", self._toggle_circle_popout)
+        for key in (TOGGLE_LAPDIST_KEY, TOGGLE_LAPDIST_KEY.upper()):
+            self.root.bind(f"<{key}>", self._toggle_lapdist_overlay)
 
     def _on_drag_start(self, event: tk.Event[tk.Misc]) -> None:
         widget = event.widget
@@ -460,6 +471,57 @@ class TractionCircleOverlay:
         self.circle_canvas = None
         self.circle_caption_var.set("Usage --")
         self.btn_circle.configure(text="Pop-out circle (O)")
+
+    def _toggle_lapdist_overlay(self, _event: object = None) -> None:
+        if self.lapdist_window is not None and self.lapdist_window.winfo_exists():
+            self._close_lapdist_overlay()
+            return
+        self._open_lapdist_overlay()
+
+    def _open_lapdist_overlay(self) -> None:
+        window = tk.Toplevel(self.root)
+        self.lapdist_window = window
+        window.title("LapDist Overlay")
+        window.configure(bg="#111111")
+        window.overrideredirect(True)
+        window.attributes("-topmost", True)
+        window.attributes("-alpha", 0.9)
+        window.geometry(f"220x70+{self.root.winfo_x() + 40}+{self.root.winfo_y() + 40}")
+
+        label = tk.Label(
+            window,
+            textvariable=self.lapdist_var,
+            font=("Segoe UI", 16, "bold"),
+            fg="#f8f8f8",
+            bg="#111111",
+        )
+        label.pack(expand=True, fill="both", padx=10, pady=10)
+
+        window.bind("<Escape>", self._toggle_lapdist_overlay)
+        window.bind("<ButtonPress-1>", self._start_lapdist_move)
+        window.bind("<B1-Motion>", self._on_lapdist_move)
+        label.bind("<ButtonPress-1>", self._start_lapdist_move)
+        label.bind("<B1-Motion>", self._on_lapdist_move)
+
+        self.btn_lapdist.configure(text="Hide LapDist (L)")
+
+    def _close_lapdist_overlay(self) -> None:
+        if self.lapdist_window is not None and self.lapdist_window.winfo_exists():
+            self.lapdist_window.destroy()
+        self.lapdist_window = None
+        self.lapdist_var.set("LapDist: --")
+        self.btn_lapdist.configure(text="LapDist overlay (L)")
+
+    def _start_lapdist_move(self, event: tk.Event[tk.Misc]) -> None:
+        self._lapdist_drag_offset_x = event.x
+        self._lapdist_drag_offset_y = event.y
+
+    def _on_lapdist_move(self, _event: tk.Event[tk.Misc]) -> None:
+        if self.lapdist_window is None or not self.lapdist_window.winfo_exists():
+            return
+        x = self.lapdist_window.winfo_pointerx() - self._lapdist_drag_offset_x
+        y = self.lapdist_window.winfo_pointery() - self._lapdist_drag_offset_y
+        self.lapdist_window.geometry(f"+{x}+{y}")
 
     @staticmethod
     def _safe_float(value: object, default: float = 0.0) -> float:
@@ -904,6 +966,9 @@ class TractionCircleOverlay:
             self.root.geometry("560x620")
             self.btn_minimal.configure(text="Exit minimal (V)")
             self.btn_circle.configure(text=("Dock circle (O)" if self.circle_window is not None and self.circle_window.winfo_exists() else "Pop-out circle (O)"))
+            self.btn_lapdist.configure(
+                text=("Hide LapDist (L)" if self.lapdist_window is not None and self.lapdist_window.winfo_exists() else "LapDist overlay (L)")
+            )
             self.footer_var.set("Drag the window to position it  •  M: compact/detailed  •  V: exit")
         else:
             if self.sidebar_visible:
@@ -913,7 +978,10 @@ class TractionCircleOverlay:
             self.root.geometry("1180x760")
             self.btn_minimal.configure(text="Minimal view (V)")
             self.btn_circle.configure(text=("Dock circle (O)" if self.circle_window is not None and self.circle_window.winfo_exists() else "Pop-out circle (O)"))
-            self.footer_var.set("M: compact/detailed  •  V: minimal view  •  O: pop-out circle  •  S: setup panel")
+            self.btn_lapdist.configure(
+                text=("Hide LapDist (L)" if self.lapdist_window is not None and self.lapdist_window.winfo_exists() else "LapDist overlay (L)")
+            )
+            self.footer_var.set("M: compact/detailed  •  V: minimal view  •  O: pop-out circle  •  L: LapDist overlay  •  S: setup panel")
 
     def _format_compact_headline(self, segments: Sequence[UnderuseSegment], lap_label: str) -> Tuple[str, str]:
         if not segments:
@@ -1021,6 +1089,7 @@ class TractionCircleOverlay:
         self.coach_card_1.set("No connection", "iRacing not detected", "When telemetry comes online, the app will resume learning automatically.")
         self.coach_card_2.set("", "", "")
         self.coach_card_3.set("", "", "")
+        self.lapdist_var.set("LapDist: --\nWaiting iRacing...")
         self._draw_circle(0.0, 0.0, 0.0)
 
     def _update(self) -> None:
@@ -1046,6 +1115,7 @@ class TractionCircleOverlay:
         lap_num = int(self._safe_float(self._read_var("Lap", 0.0)))
         lap_dist_pct = self._safe_float(self._read_var("LapDistPct", 0.0))
         driver_idx = int(self._safe_float(self._read_var("DriverCarIdx", 0)))
+        self.lapdist_var.set(f"LapDist: {lap_dist_pct:.3f}")
 
         long_g = long_accel / G_CONSTANT
         lat_g = lat_accel / G_CONSTANT
