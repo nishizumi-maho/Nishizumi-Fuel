@@ -1,6 +1,7 @@
 # Nishizumi Tools
 
 ➡️ **Latest Release:** [Get the newest release package](https://github.com/nishizumi-maho/Nishizumi-Tools/releases)
+🆕 **Current launcher version:** **v7**
 
 <img width="512" height="512" alt="ChatGPT Image Mar 31, 2026, 06_17_31 AM" src="https://github.com/user-attachments/assets/65e9bf59-1160-4f6d-a197-7c783e845013" />
 
@@ -11,6 +12,7 @@ Nishizumi Tools is a collection of standalone iRacing helper overlays written in
 - **Nishizumi Pit Calibrator**: one-stop pit timing calibration (total, service, base, fuel, and manual tire marker).
 - **Nishizumi TireWear**: learned tire degradation model per car/track/conditions.
 - **Nishizumi Traction**: grip-usage coaching overlay based on your telemetry.
+- **Launcher update checker (v7):** the single-EXE launcher now checks GitHub Releases and shows when a newer version is available.
 
 ---
 
@@ -206,4 +208,3 @@ Traction shows live grip usage and coaching hints so you can identify where you 
 - `apps/Nishizumi_Traction.py`
 - `OLD/Nishizumi_Pittime.py`
 - `docs/fuel-monitor.md`
-

@@ -15,10 +15,21 @@ from PySide6 import QtCore, QtGui, QtWidgets, QtNetwork
 
 APP_TITLE = "Nishizumi Tools"
 APP_SUBTITLE = "Default launcher for the overlay collection"
+APP_VERSION = "v7"
 APP_DIR_NAME = "NishizumiTools"
 MENU_STATE_FILE = "menu_state.json"
 APP_ICON_FILE_PNG = "nishizumi_tools_icon.png"
 APP_ICON_FILE_ICO = "nishizumi_tools_icon.ico"
+GITHUB_RELEASE_OWNER = "nishizumi-maho"
+GITHUB_RELEASE_REPO = "Nishizumi-Tools"
+GITHUB_RELEASES_API_LATEST = (
+    f"https://api.github.com/repos/{GITHUB_RELEASE_OWNER}/{GITHUB_RELEASE_REPO}/releases/latest"
+)
+GITHUB_RELEASES_PAGE_LATEST = (
+    f"https://github.com/{GITHUB_RELEASE_OWNER}/{GITHUB_RELEASE_REPO}/releases/latest"
+)
+GITHUB_API_VERSION = "2022-11-28"
+GITHUB_UPDATE_CHECK_INTERVAL_SECONDS = 6 * 60 * 60
 
 
 @dataclass(frozen=True)
@@ -302,6 +313,17 @@ class LauncherWindow(QtWidgets.QWidget):
         self.status_overview = QtWidgets.QLabel("")
         self.status_overview.setObjectName("Overview")
         self.status_overview.setWordWrap(True)
+        self.update_status = QtWidgets.QLabel("")
+        self.update_status.setObjectName("UpdateStatus")
+        self.update_status.setWordWrap(True)
+        self.update_status.setOpenExternalLinks(True)
+        self.update_status.setTextInteractionFlags(QtCore.Qt.TextBrowserInteraction)
+
+        self.network_manager = QtNetwork.QNetworkAccessManager(self)
+        self.network_manager.finished.connect(self._on_update_reply)
+        self.update_timer = QtCore.QTimer(self)
+        self.update_timer.setInterval(GITHUB_UPDATE_CHECK_INTERVAL_SECONDS * 1000)
+        self.update_timer.timeout.connect(self.check_for_updates)
 
         self.tray = QtWidgets.QSystemTrayIcon(icon, self)
         self.tray.setToolTip(APP_TITLE)
@@ -314,6 +336,9 @@ class LauncherWindow(QtWidgets.QWidget):
         self._setup_processes()
         self._restore_position()
         self._refresh_overview()
+        self._set_update_status("Checking for updates…")
+        self.check_for_updates()
+        self.update_timer.start()
 
     def _build_tray_menu(self) -> None:
         menu = QtWidgets.QMenu(self)
@@ -358,6 +383,7 @@ class LauncherWindow(QtWidgets.QWidget):
         header.addLayout(top_buttons)
         header.addWidget(self.close_apps_on_exit)
         header.addWidget(self.minimize_to_tray)
+        header.addWidget(self.update_status)
         header.addWidget(self.status_overview)
 
         grid = QtWidgets.QGridLayout()
@@ -424,6 +450,13 @@ class LauncherWindow(QtWidgets.QWidget):
             border-radius: 12px;
             padding: 12px 14px;
             color: #c9d5e3;
+        }
+        #UpdateStatus {
+            background: #0f1722;
+            border: 1px solid #1f2a38;
+            border-radius: 12px;
+            padding: 10px 14px;
+            color: #bfd0e0;
         }
         #AppCard {
             background: #101923;
@@ -521,14 +554,71 @@ class LauncherWindow(QtWidgets.QWidget):
         running = [self.cards[key].definition.title for key, process in self.processes.items() if process.is_running()]
         if running:
             self.status_overview.setText(
+                f"{APP_TITLE} {APP_VERSION}\n"
                 "Running now: " + ", ".join(running) + "\nAll apps are being launched from this same EXE."
             )
         else:
             self.status_overview.setText(
+                f"{APP_TITLE} {APP_VERSION}\n"
                 "No app is running right now. Open any overlay from here.\n"
                 f"Shared data folder: {appdata_dir()}\n"
                 "This launcher keeps the icon in the system tray too."
             )
+
+    def _set_update_status(self, text: str) -> None:
+        self.update_status.setText(text)
+
+    def check_for_updates(self) -> None:
+        request = QtNetwork.QNetworkRequest(QtCore.QUrl(GITHUB_RELEASES_API_LATEST))
+        request.setHeader(QtNetwork.QNetworkRequest.UserAgentHeader, f"{APP_TITLE}/{APP_VERSION}")
+        request.setRawHeader(b"Accept", b"application/vnd.github+json")
+        request.setRawHeader(b"X-GitHub-Api-Version", GITHUB_API_VERSION.encode("utf-8"))
+        self.network_manager.get(request)
+
+    def _on_update_reply(self, reply: QtNetwork.QNetworkReply) -> None:
+        if reply.error() != QtNetwork.QNetworkReply.NoError:
+            self._set_update_status(
+                f"Update check failed ({reply.errorString()}). "
+                f"<a href='{GITHUB_RELEASES_PAGE_LATEST}'>Open latest release page</a>."
+            )
+            reply.deleteLater()
+            return
+
+        try:
+            payload = bytes(reply.readAll())
+            data = json.loads(payload.decode("utf-8", errors="replace"))
+        except Exception:
+            self._set_update_status(
+                f"Update check returned invalid data. "
+                f"<a href='{GITHUB_RELEASES_PAGE_LATEST}'>Open latest release page</a>."
+            )
+            reply.deleteLater()
+            return
+
+        latest_tag = str(data.get("tag_name") or "").strip()
+        latest_name = str(data.get("name") or latest_tag or "latest release").strip()
+        latest_url = str(data.get("html_url") or GITHUB_RELEASES_PAGE_LATEST).strip()
+        if not latest_tag:
+            self._set_update_status(
+                f"Could not detect latest release tag. "
+                f"<a href='{GITHUB_RELEASES_PAGE_LATEST}'>Open latest release page</a>."
+            )
+            reply.deleteLater()
+            return
+
+        if _is_version_newer(latest_tag, APP_VERSION):
+            self._set_update_status(
+                f"Update available: <b>{latest_tag}</b> ({latest_name}). "
+                f"You are on <b>{APP_VERSION}</b>. "
+                f"<a href='{latest_url}'>Download</a>."
+            )
+        else:
+            self._set_update_status(
+                f"Up to date: <b>{APP_VERSION}</b>. "
+                f"Latest release: <b>{latest_tag}</b>. "
+                f"<a href='{latest_url}'>View release</a>."
+            )
+        reply.deleteLater()
 
     def _on_tray_activated(self, reason: QtWidgets.QSystemTrayIcon.ActivationReason) -> None:
         if reason in (
@@ -583,6 +673,16 @@ def load_icon(style: QtWidgets.QStyle) -> QtGui.QIcon:
         if not icon.isNull():
             return icon
     return style.standardIcon(QtWidgets.QStyle.SP_ComputerIcon)
+
+
+def _version_key(text: str) -> tuple[int, ...]:
+    cleaned = "".join(ch if ch.isdigit() else " " for ch in text or "")
+    parts = [int(part) for part in cleaned.split() if part.isdigit()]
+    return tuple(parts) if parts else (0,)
+
+
+def _is_version_newer(candidate: str, current: str) -> bool:
+    return _version_key(candidate) > _version_key(current)
 
 
 def run_launcher() -> int:

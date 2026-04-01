@@ -1,10 +1,12 @@
 Nishizumi Tools - Single EXE package
 
 What changed
+- Launcher version is now v7
 - The launcher now builds into one EXE only: NishizumiTools.exe
 - FuelMonitor, Pit Calibrator, TireWear, and Traction are all launched from inside that same EXE
 - The custom icon is used for the EXE and for the launcher tray icon
 - Closing the launcher can hide it to the system tray instead of exiting
+- The launcher checks GitHub Releases for updates every 6 hours
 
 How to build
 1. Open this folder on Windows.
