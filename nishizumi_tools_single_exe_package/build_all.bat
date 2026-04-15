@@ -30,7 +30,7 @@ mkdir "%DIST_DIR%"
 mkdir "%BUILD_DIR%"
 mkdir "%SPEC_DIR%"
 
-pyinstaller --noconfirm --clean --onefile --windowed ^
+python -m PyInstaller --noconfirm --clean --onefile --windowed ^
   --name "%EXE_NAME%" ^
   --icon "%ICON_FILE_ICO%" ^
   --distpath "%DIST_DIR%" ^

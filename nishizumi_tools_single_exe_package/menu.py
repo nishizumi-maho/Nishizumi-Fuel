@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import os
 import subprocess
@@ -15,7 +14,7 @@ from PySide6 import QtCore, QtGui, QtWidgets, QtNetwork
 
 APP_TITLE = "Nishizumi Tools"
 APP_SUBTITLE = "Default launcher for the overlay collection"
-APP_VERSION = "v7"
+APP_VERSION = "v8"
 APP_DIR_NAME = "NishizumiTools"
 MENU_STATE_FILE = "menu_state.json"
 APP_ICON_FILE_PNG = "nishizumi_tools_icon.png"
@@ -30,6 +29,7 @@ GITHUB_RELEASES_PAGE_LATEST = (
 )
 GITHUB_API_VERSION = "2022-11-28"
 GITHUB_UPDATE_CHECK_INTERVAL_SECONDS = 6 * 60 * 60
+LAUNCHER_INSTANCE_NAME = "NishizumiToolsLauncher"
 
 
 @dataclass(frozen=True)
@@ -65,9 +65,7 @@ APP_MAP = {app.key: app for app in APPS}
 
 
 def launcher_instance_name() -> str:
-    base = str(sys.executable if getattr(sys, "frozen", False) else Path(__file__).resolve())
-    digest = hashlib.sha1(base.encode("utf-8", errors="ignore")).hexdigest()[:16]
-    return f"NishizumiToolsLauncher_{digest}"
+    return LAUNCHER_INSTANCE_NAME
 
 
 class SingleInstanceGuard(QtCore.QObject):
@@ -297,6 +295,7 @@ class LauncherWindow(QtWidgets.QWidget):
         self.cards: Dict[str, AppCard] = {}
         self._quitting = False
         self._hide_to_tray_notified = False
+        self._last_update_popup_tag: Optional[str] = None
 
         self.setWindowTitle(APP_TITLE)
         self.setMinimumSize(840, 560)
@@ -568,6 +567,26 @@ class LauncherWindow(QtWidgets.QWidget):
     def _set_update_status(self, text: str) -> None:
         self.update_status.setText(text)
 
+    def _show_update_popup(self, latest_tag: str, latest_name: str, latest_url: str) -> None:
+        if self._last_update_popup_tag == latest_tag:
+            return
+        self._last_update_popup_tag = latest_tag
+
+        message = QtWidgets.QMessageBox(self)
+        message.setIcon(QtWidgets.QMessageBox.Information)
+        message.setWindowTitle("Update available")
+        message.setText(f"A new {APP_TITLE} version is available: {latest_tag}")
+        message.setInformativeText(
+            f"Current version: {APP_VERSION}\n"
+            f"Release: {latest_name}\n\n"
+            "Open the release page to download the latest build."
+        )
+        download_button = message.addButton("Open download page", QtWidgets.QMessageBox.AcceptRole)
+        message.addButton("Later", QtWidgets.QMessageBox.RejectRole)
+        message.exec()
+        if message.clickedButton() is download_button:
+            QtGui.QDesktopServices.openUrl(QtCore.QUrl(latest_url))
+
     def check_for_updates(self) -> None:
         request = QtNetwork.QNetworkRequest(QtCore.QUrl(GITHUB_RELEASES_API_LATEST))
         request.setHeader(QtNetwork.QNetworkRequest.UserAgentHeader, f"{APP_TITLE}/{APP_VERSION}")
@@ -612,6 +631,7 @@ class LauncherWindow(QtWidgets.QWidget):
                 f"You are on <b>{APP_VERSION}</b>. "
                 f"<a href='{latest_url}'>Download</a>."
             )
+            self._show_update_popup(latest_tag, latest_name, latest_url)
         else:
             self._set_update_status(
                 f"Up to date: <b>{APP_VERSION}</b>. "
